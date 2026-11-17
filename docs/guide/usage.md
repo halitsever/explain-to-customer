@@ -1,3 +1,7 @@
+---
+description: "Run /explain-to-customer in Claude Code: scope, format, style, output folder, language and audience arguments, with examples."
+---
+
 # Usage
 
 ```

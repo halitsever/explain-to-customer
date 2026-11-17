@@ -1,3 +1,7 @@
+---
+description: "Fix common explain-to-customer problems: the skill not found in Claude Code, missing FFmpeg, macOS save permissions and fonts that fall back."
+---
+
 # Troubleshooting
 
 ### `/explain-to-customer` is not found

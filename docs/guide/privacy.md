@@ -1,3 +1,7 @@
+---
+description: "What explain-to-customer keeps off screen: secrets, internal hosts and real customer data are masked or scanned for before any video, slide or diagram is delivered."
+---
+
 # Privacy and honesty
 
 ## What never goes on screen

@@ -7,10 +7,10 @@
 <img src="https://halitsever-api.vercel.app/api/repo-title?title=Explain%20To%20Customer" alt="Explain To Customer">
 
 <p align="center">
-An agent skill for Claude Code that turns a code change into a short video, slides and diagrams you can send to a client.<br>
+An agent skill for Claude Code that turns a code change, commit range or pull request into a short explainer video, slides and Mermaid diagrams you can send to a client.<br>
 <br/>
 <br/>
-<img src="https://img.shields.io/github/sponsors/halitsever"/>
+<img src="https://img.shields.io/github/sponsors/halitsever" alt="GitHub Sponsors"/>
 <a href="https://skills.sh/halitsever/explain-to-customer"><img src="https://skills.sh/b/halitsever/explain-to-customer" alt="skills.sh"/></a>
 </p>
 <p align="center">
@@ -165,6 +165,12 @@ Third-party tools are installed into the tool workspace, not bundled: HyperFrame
 Found a bug or have an idea? Open an <a href="https://github.com/halitsever/explain-to-customer/issues">issue</a>.<br/>
 Read the <a href=".github/CONTRIBUTING.md">contributing guide</a> before sending a pull request.
 </p>
+
+### Related projects
+
+- [claudegrid](https://github.com/halitsever/claudegrid): opens a grid of Claude Code agents in one terminal window, with a prompt, model and git worktree per pane.
+- [claude-code-vps](https://github.com/halitsever/claude-code-vps): one command sets up an Ubuntu server for Claude Code with Plasma over RDP, hardened SSH, Docker and config sync.
+- [HaltOS](https://github.com/halitsever/haltos): a monochrome KDE Plasma theme and OS identity layer for Claude Code servers, installed on top of claude-code-vps.
 
 <p align="center">
 <img src="https://halitsever-api.vercel.app/api/sponsor"/>
