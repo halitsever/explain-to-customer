@@ -1,3 +1,7 @@
+---
+description: "Install explain-to-customer, an agent skill for Claude Code, with the skills CLI or git, plus the Node.js, FFmpeg and git it needs on macOS, Windows and Linux."
+---
+
 # Getting started
 
 explain-to-customer is an agent skill for [Claude Code](https://github.com/anthropics/claude-code). You finish a change, type `/explain-to-customer`, and get a folder you can send to your client: a short video, a few slides, Mermaid diagrams and a message, in the visual style you pick.

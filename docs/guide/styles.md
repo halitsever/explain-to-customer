@@ -1,3 +1,7 @@
+---
+description: "The 21 visual styles of explain-to-customer, from shadcn and Linear to whiteboard and terminal, plus Match my project, each checked for WCAG AA contrast."
+---
+
 <script setup>
 import { withBase } from 'vitepress'
 import { data as styles } from '../.vitepress/theme/styles.data'

@@ -1,3 +1,7 @@
+---
+description: "How explain-to-customer runs: preflight, questions, a storyboard you approve, local rendering of screenshots, diagrams, slides and video, then a QA pass."
+---
+
 # How it works
 
 ## A run, step by step

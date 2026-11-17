@@ -1,3 +1,7 @@
+---
+description: "What one explain-to-customer run produces: an MP4 explainer video with poster and GIF, PNG slides, Mermaid diagrams and a message ready to send to your client."
+---
+
 # Outputs
 
 One run produces a folder like this:

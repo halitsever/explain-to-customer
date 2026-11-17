@@ -1,0 +1,22 @@
+# explain-to-customer
+
+> explain-to-customer is an agent skill for Claude Code that turns a code change (uncommitted work, a commit range or a pull request) into a short MP4 explainer video, PNG slides, Mermaid diagrams and a ready-to-send message for a non-technical client, in one of 21 visual styles or your project's own style. Rendering is local, with HyperFrames, Playwright, Mermaid and FFmpeg.
+
+Install with `npx skills add halitsever/explain-to-customer -g -a claude-code`, then run `/explain-to-customer` in Claude Code. It needs Node.js 22+ (older versions use a slower video engine), FFmpeg and git. The first run downloads about 250 MB of rendering tools into `~/.cache/explain-to-customer`, never into the project. The skill only reads the project, and it shows a storyboard for approval before rendering.
+
+## Docs
+
+- [Getting started](https://halitsever.github.io/explain-to-customer/guide/getting-started): requirements and install with the skills CLI or git
+- [Usage](https://halitsever.github.io/explain-to-customer/guide/usage): arguments for scope, format, style, output folder, language and audience
+- [Outputs](https://halitsever.github.io/explain-to-customer/guide/outputs): the folder one run produces
+- [Styles](https://halitsever.github.io/explain-to-customer/guide/styles): the 21 styles and Match my project
+- [How it works](https://halitsever.github.io/explain-to-customer/guide/how-it-works): preflight, storyboard, approval, render and QA
+- [Privacy and honesty](https://halitsever.github.io/explain-to-customer/guide/privacy): what never goes on screen and how secrets are scanned for
+- [Troubleshooting](https://halitsever.github.io/explain-to-customer/guide/troubleshooting): skill not found, FFmpeg, macOS permissions, fonts
+
+## Optional
+
+- [Website](https://halitsever.github.io/explain-to-customer/): overview with example outputs
+- [SKILL.md](https://github.com/halitsever/explain-to-customer/blob/main/skills/explain-to-customer/SKILL.md): the skill's instructions as Claude Code loads them
+- [Source](https://github.com/halitsever/explain-to-customer): repository
+- [skills.sh listing](https://www.skills.sh/halitsever/explain-to-customer/explain-to-customer): directory page

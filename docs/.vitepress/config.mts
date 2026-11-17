@@ -12,19 +12,49 @@ export default defineConfig({
   description,
   cleanUrls: true,
   appearance: "dark",
+  sitemap: { hostname: site },
   markdown: { theme: { light: "vitesse-light", dark: "vitesse-dark" } },
   head: [
     ["link", { rel: "icon", type: "image/svg+xml", href: `${base}brand/logo-mark-dark.svg` }],
     ["link", { rel: "apple-touch-icon", href: `${base}brand/avatar-512.png` }],
     ["meta", { name: "theme-color", content: "#1F1D1A" }],
     ["meta", { property: "og:type", content: "website" }],
-    ["meta", { property: "og:url", content: site }],
-    ["meta", { property: "og:title", content: "explain-to-customer" }],
-    ["meta", { property: "og:description", content: description }],
+    ["meta", { property: "og:site_name", content: "explain-to-customer" }],
     ["meta", { property: "og:image", content: `${site}brand/social-preview-1280x640.png` }],
+    ["meta", { property: "og:image:width", content: "1280" }],
+    ["meta", { property: "og:image:height", content: "640" }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
     ["meta", { name: "twitter:image", content: `${site}brand/social-preview-1280x640.png` }],
   ],
+  /** Per-page canonical and Open Graph tags, so shared guide links preview their own page. */
+  transformPageData(pageData) {
+    const path = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
+    const url = site + path;
+    const title = path === "" ? "explain-to-customer" : `${pageData.frontmatter.title ?? pageData.title} | explain-to-customer`;
+    const desc = pageData.frontmatter.description || pageData.description || description;
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push(
+      ["link", { rel: "canonical", href: url }],
+      ["meta", { property: "og:url", content: url }],
+      ["meta", { property: "og:title", content: title }],
+      ["meta", { property: "og:description", content: desc }],
+    );
+    if (path === "") {
+      const code = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        name: "explain-to-customer",
+        description,
+        url: site,
+        codeRepository: "https://github.com/halitsever/explain-to-customer",
+        programmingLanguage: "JavaScript",
+        runtimePlatform: "Node.js",
+        license: "https://opensource.org/licenses/MIT",
+        author: { "@type": "Person", name: "Halit Sever", url: "https://github.com/halitsever" },
+      };
+      pageData.frontmatter.head.push(["script", { type: "application/ld+json" }, JSON.stringify(code)]);
+    }
+  },
   themeConfig: {
     logo: { light: "/brand/logo-mark.svg", dark: "/brand/logo-mark-dark.svg", alt: "" },
     siteTitle: "explain-to-customer",
