@@ -1,4 +1,4 @@
 ---
 landing: true
-title: Explain every code change to your client
+title: Claude Code skill for client explainer videos and slides
 ---

@@ -1,12 +1,13 @@
 # explain-to-customer
 
-> explain-to-customer is an agent skill for Claude Code that turns a code change (uncommitted work, a commit range or a pull request) into a short MP4 explainer video, PNG slides, Mermaid diagrams and a ready-to-send message for a non-technical client, in one of 21 visual styles or your project's own style. Rendering is local, with HyperFrames, Playwright, Mermaid and FFmpeg.
+> explain-to-customer is a Claude Code skill that turns a code change (uncommitted work, a commit range or a pull request) into a short MP4 explainer video, PNG slides, Mermaid diagrams and a ready-to-send message for a non-technical client, in one of 21 visual styles or your project's own style. Rendering is local, with HyperFrames, Playwright, Mermaid and FFmpeg.
 
 Install with `npx skills add halitsever/explain-to-customer -g -a claude-code`, then run `/explain-to-customer` in Claude Code. It needs Node.js 22+ (older versions use a slower video engine), FFmpeg and git. The first run downloads about 250 MB of rendering tools into `~/.cache/explain-to-customer`, never into the project. The skill only reads the project, and it shows a storyboard for approval before rendering.
 
 ## Docs
 
 - [Getting started](https://halitsever.github.io/explain-to-customer/guide/getting-started): requirements and install with the skills CLI or git
+- [How to install a Claude Code skill](https://halitsever.github.io/explain-to-customer/guide/install-claude-code-skill): where Claude Code looks for skills, the skills CLI and manual install, and how a skill is started
 - [Usage](https://halitsever.github.io/explain-to-customer/guide/usage): arguments for scope, format, style, output folder, language and audience
 - [Outputs](https://halitsever.github.io/explain-to-customer/guide/outputs): the folder one run produces
 - [Styles](https://halitsever.github.io/explain-to-customer/guide/styles): the 21 styles and Match my project
