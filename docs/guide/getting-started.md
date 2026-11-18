@@ -1,10 +1,10 @@
 ---
-description: "Install explain-to-customer, an agent skill for Claude Code, with the skills CLI or git, plus the Node.js, FFmpeg and git it needs on macOS, Windows and Linux."
+description: "Install explain-to-customer, a Claude Code skill, with the skills CLI or git, plus the Node.js, FFmpeg and git it needs on macOS, Windows and Linux."
 ---
 
 # Getting started
 
-explain-to-customer is an agent skill for [Claude Code](https://github.com/anthropics/claude-code). You finish a change, type `/explain-to-customer`, and get a folder you can send to your client: a short video, a few slides, Mermaid diagrams and a message, in the visual style you pick.
+explain-to-customer is a [Claude Code](https://github.com/anthropics/claude-code) skill. You finish a change, type `/explain-to-customer`, and get a folder you can send to your client: a short video, a few slides, Mermaid diagrams and a message, in the visual style you pick.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ Copy-Item -Recurse "$env:USERPROFILE\explain-to-customer\skills\explain-to-custo
 Update with `git pull` in the clone. On Windows, copy the folder again afterwards.
 :::
 
-If `~/.claude/skills` did not exist before you installed, run `/reload-skills` once in Claude Code.
+If `~/.claude/skills` did not exist before you installed, run `/reload-skills` once in Claude Code. [How to install a Claude Code skill](./install-claude-code-skill) explains where skills live and how Claude Code starts them.
 
 ## First run
 

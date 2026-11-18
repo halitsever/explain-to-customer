@@ -7,7 +7,7 @@
 <img src="https://halitsever-api.vercel.app/api/repo-title?title=Explain%20To%20Customer" alt="Explain To Customer">
 
 <p align="center">
-An agent skill for Claude Code that turns a code change, commit range or pull request into a short explainer video, slides and Mermaid diagrams you can send to a client.<br>
+A Claude Code skill that turns a code change, commit range or pull request into a short explainer video, slides and Mermaid diagrams you can send to a client.<br>
 <br/>
 <br/>
 <img src="https://img.shields.io/github/sponsors/halitsever" alt="GitHub Sponsors"/>
@@ -88,7 +88,7 @@ Copy-Item -Recurse "$env:USERPROFILE\explain-to-customer\skills\explain-to-custo
 Update with `git pull` in the clone (on Windows, copy the folder again).
 </details>
 
-If `~/.claude/skills` did not exist before, run `/reload-skills` once in Claude Code.
+If `~/.claude/skills` did not exist before, run `/reload-skills` once in Claude Code. New to skills? [How to install a Claude Code skill](https://halitsever.github.io/explain-to-customer/guide/install-claude-code-skill) covers both methods step by step.
 
 FFmpeg: `brew install ffmpeg`, `winget install Gyan.FFmpeg` or `sudo apt install ffmpeg`. Without admin rights the skill can install a static build for you.
 
