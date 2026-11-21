@@ -6,8 +6,8 @@ export const FORMATS = {
 };
 
 export function formatOf(sb) {
-  const name = sb?.meta?.format ?? "16:9";
+  const name = sb?.meta?.aspect ?? "16:9";
   const size = Object.hasOwn(FORMATS, name) ? FORMATS[name] : null;
-  if (!size) throw new Error(`Unknown meta.format "${name}". Use 16:9, 4:5 or 9:16.`);
+  if (!size) throw new Error(`Unknown meta.aspect "${name}". Use 16:9, 4:5 or 9:16.`);
   return { name, ...size, slug: name.replace(":", "-") };
 }
