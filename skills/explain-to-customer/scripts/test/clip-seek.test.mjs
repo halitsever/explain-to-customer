@@ -9,7 +9,11 @@ import { SKILL_DIR, WS, findFfmpeg, runSync } from "../lib/common.mjs";
 
 const ff = findFfmpeg();
 const skip = !fs.existsSync(WS) || !ff.ffmpeg ? "needs the tool workspace and FFmpeg (node scripts/setup.mjs)" : false;
-const ENGINES = ["playwright", "hyperframes"];
+const hfMissing =
+  Number(process.versions.node.split(".")[0]) < 22 || !fs.existsSync(path.join(WS, "node_modules", "hyperframes", "bin", "hyperframes.mjs"))
+    ? "HyperFrames needs Node 22+ and the tool workspace install"
+    : false;
+const ENGINES = { playwright: skip, hyperframes: skip || hfMissing };
 /** The clip scene starts after a title scene, so clip time and video time differ. */
 const LEAD = 3;
 
@@ -19,7 +23,7 @@ const run = (...a) => {
   return r.stderr;
 };
 
-/** 4 s testsrc2 clip. The top strip's brightness encodes the frame number, since this FFmpeg build has no drawtext. */
+/** 4 s testsrc2 clip with a frame counter in two top strips (this FFmpeg build has no drawtext): a coarse ramp and N mod 8 in big steps. */
 function makeClip(file) {
   run(
     "-v",
@@ -31,7 +35,7 @@ function makeClip(file) {
     "-f",
     "lavfi",
     "-i",
-    "nullsrc=s=1920x120:r=30:d=4,geq=lum='16+N*1.75':cb=128:cr=128",
+    "nullsrc=s=1920x120:r=30:d=4,geq=lum='if(lt(Y,60),16+N*1.75,16+mod(N,8)*25)':cb=128:cr=128",
     "-filter_complex",
     "[0][1]overlay=0:0:shortest=1,format=yuv420p",
     "-c:v",
@@ -46,10 +50,18 @@ const frameAt = (file, t, out) => run("-v", "error", "-ss", String(t), "-i", fil
 const frameN = (file, n, out) => run("-v", "error", "-i", file, "-vf", `select=eq(n\\,${n})`, "-frames:v", "1", out);
 /** Luma only: Chromium and FFmpeg pick different matrices for an untagged clip, which shifts chroma but not the picture. */
 const ssim = (a, b) => Number(run("-i", a, "-i", b, "-lavfi", "[0]format=gray[a];[1]format=gray[b];[a][b]ssim", "-f", "null", "-").match(/All:([0-9.]+)/)[1]);
-/** Frame number read back from the strip brightness. PNG gray is full range, the strip was written in limited range. */
+/** Mean luma of a strip in limited range. PNG gray is full range. */
+function stripY(png, y) {
+  const log = run("-i", png, "-vf", `crop=1920:40:0:${y},format=gray,signalstats,metadata=print:key=lavfi.signalstats.YAVG`, "-f", "null", "-");
+  return (Number(log.match(/YAVG=([0-9.]+)/)[1]) * 219) / 255 + 16;
+}
+/** The coarse strip narrows it to a few frames, the mod-8 strip picks the exact one. */
 function stripFrame(png) {
-  const log = run("-i", png, "-vf", "crop=1920:100:0:10,format=gray,signalstats,metadata=print:key=lavfi.signalstats.YAVG", "-f", "null", "-");
-  return (Number(log.match(/YAVG=([0-9.]+)/)[1]) * 219) / 255 / 1.75;
+  const coarse = Math.round((stripY(png, 10) - 16) / 1.75);
+  const fine = Math.round((stripY(png, 70) - 16) / 25) % 8;
+  let d = (((fine - coarse) % 8) + 8) % 8;
+  if (d >= 4) d -= 8;
+  return coarse + d;
 }
 
 function project() {
@@ -78,25 +90,37 @@ function project() {
   return { root, src, clip: path.join(root, "rec.mp4"), out: path.join(path.dirname(src), "clip.mp4") };
 }
 
-for (const engine of ENGINES) {
-  test(`clip frames follow the timeline (${engine})`, { skip, timeout: 300000 }, () => {
+function assertFrame(png, want) {
+  assert.equal(stripFrame(png), want, `clip frame shown instead of ${want}`);
+}
+
+for (const [engine, engineSkip] of Object.entries(ENGINES)) {
+  test(`clip frames follow the timeline (${engine})`, { skip: engineSkip, timeout: 300000 }, () => {
     const p = project();
-    const res = JSON.parse(
-      execFileSync(process.execPath, [path.join(SKILL_DIR, "scripts", "render-video.mjs"), "--src", p.src, "--engine", engine, "--no-gif"], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }),
-    );
-    assert.equal(res.engine, engine, JSON.stringify(res.warnings));
-    const f = (n) => path.join(p.root, n);
-    frameAt(p.out, LEAD + 2, f("out-2.png"));
-    frameN(p.clip, 60, f("src-60.png"));
-    assert.ok(ssim(f("out-2.png"), f("src-60.png")) > 0.9);
-    assert.ok(Math.abs(stripFrame(f("out-2.png")) - 60) <= 1.5, `frame at 2 s shows clip frame ${stripFrame(f("out-2.png"))}`);
-    frameAt(p.out, LEAD + 5, f("out-5.png"));
-    frameN(p.clip, 119, f("src-119.png"));
-    assert.ok(ssim(f("out-5.png"), f("src-119.png")) > 0.9);
-    assert.ok(Math.abs(stripFrame(f("out-5.png")) - 119) <= 1.5, `frame at 5 s shows clip frame ${stripFrame(f("out-5.png"))}`);
-    fs.rmSync(p.root, { recursive: true, force: true });
+    try {
+      check(p, engine);
+    } finally {
+      fs.rmSync(p.root, { recursive: true, force: true });
+    }
   });
+}
+
+/** Renders the project, then checks the clip frame shown mid-scene and after the clip ran out. */
+function check(p, engine) {
+  const res = JSON.parse(
+    execFileSync(process.execPath, [path.join(SKILL_DIR, "scripts", "render-video.mjs"), "--src", p.src, "--engine", engine, "--no-gif"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }),
+  );
+  assert.equal(res.engine, engine, JSON.stringify(res.warnings));
+  const f = (n) => path.join(p.root, n);
+  frameAt(p.out, LEAD + 2, f("out-2.png"));
+  frameN(p.clip, 60, f("src-60.png"));
+  assert.ok(ssim(f("out-2.png"), f("src-60.png")) > 0.9);
+  assertFrame(f("out-2.png"), 60);
+  frameAt(p.out, LEAD + 5, f("out-5.png"));
+  frameN(p.clip, 119, f("src-119.png"));
+  assert.ok(ssim(f("out-5.png"), f("src-119.png")) > 0.9);
+  assertFrame(f("out-5.png"), 119);
 }
