@@ -9,7 +9,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs, loadRun, exists, die, log, fmtBytes, readJson, WS, SKILL_DIR, renderEnv, runStream, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
 import { formatOf } from "./lib/format.mjs";
-import { buildScenes, timeline, sectionOf } from "./lib/scenes.mjs";
+import { buildScenes, timeline, sectionOf, fillComposition } from "./lib/scenes.mjs";
 import { bakeScenes } from "./lib/stills.mjs";
 import { serveDir } from "./lib/static-server.mjs";
 
@@ -57,15 +57,16 @@ function buildComposition(src, sb, tl) {
     spec.scenes.push({ id, start: s.start, duration: s.duration, transition: s.scene.transition || "fade" });
   });
   const tpl = fs.readFileSync(path.join(SKILL_DIR, "templates", "scenes", "_composition.html"), "utf8");
-  const out = tpl
-    .replace("{{width}}", String(size.width))
-    .replace("{{height}}", String(size.height))
-    .replace("{{format}}", size.slug)
-    .replace("{{lang}}", sb.meta?.lang || "en")
-    .replace("{{title}}", String(sb.meta?.title || "Explainer").replace(/</g, "&lt;"))
-    .replace("{{total}}", String(tl.total))
-    .replace("{{clips}}", clips.join("\n"))
-    .replace("{{spec}}", JSON.stringify(spec));
+  const out = fillComposition(tpl, {
+    width: size.width,
+    height: size.height,
+    format: size.slug,
+    lang: sb.meta?.lang || "en",
+    title: String(sb.meta?.title || "Explainer").replace(/</g, "&lt;"),
+    total: tl.total,
+    clips: clips.join("\n"),
+    spec: JSON.stringify(spec),
+  });
   fs.writeFileSync(path.join(dir, "index.html"), out);
   return dir;
 }

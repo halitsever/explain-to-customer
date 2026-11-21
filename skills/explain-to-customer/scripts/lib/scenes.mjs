@@ -33,6 +33,10 @@ export const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden
 /** Escape, then turn **text** into <mark>text</mark> for emphasis. */
 export const md = (s) => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<mark>$1</mark>");
 const fillTpl = (tpl, data) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => data[k] ?? "");
+/** Single pass, so every placeholder is filled and clip HTML is never rescanned. */
+export function fillComposition(template, data) {
+  return fillTpl(template, data);
+}
 const tpl = (name) => fs.readFileSync(path.join(TPL, `${name}.html`), "utf8");
 
 export function labelsFor(sb) {
