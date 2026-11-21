@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Scene HTML -> PNG stills at 1920x1080, deviceScaleFactor 2.
+ * Scene HTML -> PNG stills at the storyboard format size (1920x1080 by default), deviceScaleFactor 2.
  *   render-stills.mjs --src <folder>/_source [--only summary,after] [--scale 2] [--force]
  * Bakes every scene (fonts, text fit, rough outlines) so the video reuses exactly what the stills show.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs, loadRun, exists, die, log, fmtBytes } from "./lib/common.mjs";
+import { formatOf } from "./lib/format.mjs";
 import { buildScenes } from "./lib/scenes.mjs";
 import { bakeScenes, pickStills } from "./lib/stills.mjs";
 
@@ -16,6 +17,7 @@ async function main() {
   const run = loadRun(args.src);
   if (!exists(path.join(run.src, "tokens.css"))) die("No tokens.css yet. Run theme.mjs --style <id> --src <_source> first.");
   const { sb, scenes, warnings: buildWarnings } = buildScenes(run.src, { force: !!args.force });
+  const size = formatOf(sb);
   let stills = pickStills(sb, scenes);
   if (args.only) {
     const only = String(args.only)
@@ -30,8 +32,8 @@ async function main() {
   if (!args.only && exists(imagesDir)) {
     for (const f of fs.readdirSync(imagesDir)) if (/^\d{2}-.+\.png$/.test(f)) fs.rmSync(path.join(imagesDir, f));
   }
-  log(`Baking ${scenes.length} scene(s), rendering ${stills.length} still(s) at ${1920 * scale}x${1080 * scale} …`);
-  const reports = await bakeScenes(run.src, scenes, shots);
+  log(`Baking ${scenes.length} scene(s), rendering ${stills.length} still(s) at ${size.width * scale}x${size.height * scale} …`);
+  const reports = await bakeScenes(run.src, scenes, shots, size);
 
   const issues = [...buildWarnings];
   for (const r of reports) {

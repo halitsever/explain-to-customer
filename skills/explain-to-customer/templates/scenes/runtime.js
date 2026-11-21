@@ -39,42 +39,59 @@
       el.style.fontSize = "";
       el.style.fontSize = parseFloat(getComputedStyle(el).fontSize) + "px";
     });
+    // Portrait frames are about half as wide, so a social-length heading gets 3 lines and the 64px heading floor.
+    var portrait = /^(4-5|9-16)$/.test(document.documentElement.getAttribute("data-format") || "");
+    function portraitHeading(el) {
+      return portrait && el.matches(".h-title, .h-scene");
+    }
+    function minOf(el) {
+      var min = parseFloat(el.getAttribute("data-min")) || 36;
+      return portraitHeading(el) ? Math.min(min, 64) : min;
+    }
     function overflowing(el) {
       var cs = getComputedStyle(el);
       var lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
       var max = parseInt(el.getAttribute("data-max-lines") || "0", 10);
+      if (max && portraitHeading(el)) max = Math.max(max, 3);
       if (max && el.scrollHeight > lh * max + lh * 0.35) return true;
       return el.scrollWidth > el.clientWidth + 2;
     }
+    /** Checks a 5% margin of the viewport, the output frame, so a stage wider than the frame still counts. */
     function sceneOverflow() {
-      var r = scene.getBoundingClientRect();
-      var limit = r.top + r.height - 54;
+      var w = document.documentElement.clientWidth;
+      var h = document.documentElement.clientHeight;
+      var bottom = h - h * 0.05;
+      var right = w - w * 0.05;
       var worst = 0;
       scene.querySelectorAll(".h-title,.h-scene,.lead,.text,.text-sm,.card,.step,.benefit,li,img").forEach(function (n) {
         var b = n.getBoundingClientRect();
-        if (b.bottom > limit) worst = Math.max(worst, b.bottom - limit);
-        if (b.right > r.right - 96 + 1) worst = Math.max(worst, b.right - (r.right - 96));
+        if (b.bottom > bottom) worst = Math.max(worst, b.bottom - bottom);
+        if (b.right > right + 1) worst = Math.max(worst, b.right - right);
       });
       return worst;
+    }
+    /** The last step lands on the minimum instead of stopping one step above it. */
+    function step(size, min) {
+      return Math.max(size * 0.96, min).toFixed(1) + "px";
     }
     for (var round = 0; round < 14; round++) {
       var changed = false;
       items.forEach(function (el) {
-        var min = parseFloat(el.getAttribute("data-min")) || 36;
+        var min = minOf(el);
         if (overflowing(el)) {
           var size = parseFloat(el.style.fontSize);
-          if (size * 0.96 >= min) {
-            el.style.fontSize = (size * 0.96).toFixed(1) + "px";
+          if (size > min) {
+            el.style.fontSize = step(size, min);
             changed = true;
           }
         }
       });
       if (sceneOverflow() > 0) {
         items.forEach(function (el) {
-          var min = parseFloat(el.getAttribute("data-min")) || 36;
+          var min = minOf(el);
           var size = parseFloat(el.style.fontSize);
-          if (size * 0.96 >= min) {
-            el.style.fontSize = (size * 0.96).toFixed(1) + "px";
+          if (size > min) {
+            el.style.fontSize = step(size, min);
             changed = true;
           }
         });
@@ -145,18 +162,31 @@
     });
   }
 
+  /** Resolves once the first frame is decoded, or the clip failed, so stills never show a blank video. */
+  function videoReady(v) {
+    if (v.readyState >= 2 || v.error) return null;
+    return new Promise(function (r) {
+      v.addEventListener("loadeddata", r, { once: true });
+      v.addEventListener("error", r, { once: true });
+      setTimeout(r, 10000);
+    });
+  }
+
   window.__etcBake = function () {
     return document.fonts.ready
       .then(function () {
         var imgs = Array.prototype.slice.call(document.images);
+        var vids = Array.prototype.slice.call(document.querySelectorAll("video"));
         return Promise.all(
-          imgs.map(function (im) {
-            return im.complete
-              ? null
-              : new Promise(function (r) {
-                  im.onload = im.onerror = r;
-                });
-          }),
+          imgs
+            .map(function (im) {
+              return im.complete
+                ? null
+                : new Promise(function (r) {
+                    im.onload = im.onerror = r;
+                  });
+            })
+            .concat(vids.map(videoReady)),
         );
       })
       .then(function () {
@@ -171,6 +201,16 @@
             return im.getAttribute("src");
           });
         if (broken.length) issues.push({ kind: "missing-image", src: broken });
+        Array.prototype.forEach.call(document.querySelectorAll("video"), function (v) {
+          if (!v.error && v.readyState >= 2) return;
+          var src = v.getAttribute("src");
+          var gone = v.hasAttribute("data-missing");
+          issues.push({
+            kind: "asset-missing",
+            src: [src],
+            detail: gone ? src + " is missing" : src + " exists but Chromium could not decode it (HyperFrames may still render it)",
+          });
+        });
         return fontReport().then(function (fonts) {
           return { fonts: fonts, issues: issues };
         });

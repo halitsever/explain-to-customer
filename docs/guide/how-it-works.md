@@ -17,7 +17,7 @@ description: "How explain-to-customer runs: preflight, questions, a storyboard y
 ## Rendering
 
 - **Scenes** are HTML templates driven only by CSS variables, so a style switch is a re-render, not a rewrite. Text that would overflow is shrunk to fit before anything is captured.
-- **Video** is a [HyperFrames](https://github.com/heygen-com/hyperframes) composition animated with GSAP and rendered deterministically in headless Chrome with FFmpeg. Without Node 22 or HyperFrames, a Playwright engine seeks the same timeline frame by frame instead.
+- **Video** is a [HyperFrames](https://github.com/heygen-com/hyperframes) composition animated with GSAP and rendered deterministically in headless Chrome with FFmpeg. Without Node 22 or HyperFrames, a Playwright engine seeks the same timeline frame by frame instead. The frame is 16:9 unless the storyboard sets `meta.aspect`, and the video is silent unless it sets `meta.audio`.
 - **Slides** are screenshots of the same scenes at twice the resolution.
 - **Diagrams** go through mermaid-cli with the style's colours converted to hex and the fonts embedded with their licences.
 - **Screenshots** come from Playwright: numbered callouts, a neutral browser frame, masked personal data, and an optional "before" shot from a temporary git worktree.

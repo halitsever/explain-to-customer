@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Baked scenes -> HyperFrames composition -> MP4 (1920x1080, 30 fps, H.264, yuv420p, faststart, no audio),
+ * Baked scenes -> HyperFrames composition -> MP4 (1920x1080 by default, 30 fps, H.264, yuv420p, faststart, AAC audio when meta.audio is set),
  * plus a poster PNG (title scene) and a GIF preview.
  *   render-video.mjs --src <folder>/_source [--engine auto|hyperframes|playwright] [--no-gif] [--estimate] [--force]
  */
@@ -8,7 +8,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs, loadRun, exists, die, log, fmtBytes, readJson, WS, SKILL_DIR, renderEnv, runStream, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
-import { buildScenes, timeline, sectionOf } from "./lib/scenes.mjs";
+import { mixAudio, stripTags, CLEAN } from "./lib/audio.mjs";
+import { formatOf } from "./lib/format.mjs";
+import { buildScenes, timeline, sectionOf, fillComposition, compositionCss } from "./lib/scenes.mjs";
 import { bakeScenes } from "./lib/stills.mjs";
 import { serveDir } from "./lib/static-server.mjs";
 
@@ -35,6 +37,7 @@ function copyDir(from, to, filter = () => true) {
 }
 
 function buildComposition(src, sb, tl) {
+  const size = formatOf(sb);
   const dir = path.join(src, "video");
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
@@ -50,17 +53,37 @@ function buildComposition(src, sb, tl) {
     const section = sectionOf(fs.readFileSync(s.path, "utf8"));
     if (!section) throw new Error(`Scene ${s.file} lost its <!--scene:start--> markers`);
     const id = `clip-${i + 1}`;
-    const html = section.replace(/(src|href)="\.\.\//g, '$1="');
+    // HyperFrames extracts video frames on its own clock and finds them by id, so each clip gets an id and its absolute window.
+    let n = 0;
+    const html = section.replace(/(src|href)="\.\.\//g, '$1="').replace(/<video\b([^>]*?)\sdata-clip-start="([\d.]+)"/g, (_, pre, at) => {
+      const off = Math.min(Number(at) || 0, s.duration);
+      const vid = /\sid="/.test(pre) ? "" : ` id="${id}-video-${++n}"`;
+      return `<video${pre}${vid} data-start="${+(s.start + off).toFixed(3)}" data-duration="${+(s.duration - off).toFixed(3)}" data-clip-start="${at}"`;
+    });
+    // Assets that already sat inside _source keep their own folder, so bring those across too.
+    for (const [, rel] of section.matchAll(/(?:src|href)="\.\.\/([^"]+)"/g)) {
+      const from = path.join(src, rel);
+      const to = path.join(dir, rel);
+      if (!rel.includes("..") && exists(from) && !exists(to)) {
+        fs.mkdirSync(path.dirname(to), { recursive: true });
+        fs.copyFileSync(from, to);
+      }
+    }
     clips.push(`<div class="clip" id="${id}" data-start="${s.start}" data-duration="${s.duration}" data-track-index="0">\n${html}\n</div>`);
     spec.scenes.push({ id, start: s.start, duration: s.duration, transition: s.scene.transition || "fade" });
   });
   const tpl = fs.readFileSync(path.join(SKILL_DIR, "templates", "scenes", "_composition.html"), "utf8");
-  const out = tpl
-    .replace("{{lang}}", sb.meta?.lang || "en")
-    .replace("{{title}}", String(sb.meta?.title || "Explainer").replace(/</g, "&lt;"))
-    .replace("{{total}}", String(tl.total))
-    .replace("{{clips}}", clips.join("\n"))
-    .replace("{{spec}}", JSON.stringify(spec));
+  const out = fillComposition(tpl, {
+    width: size.width,
+    height: size.height,
+    format: size.slug,
+    lang: sb.meta?.lang || "en",
+    title: String(sb.meta?.title || "Explainer").replace(/</g, "&lt;"),
+    total: tl.total,
+    sceneCss: compositionCss(sb),
+    clips: clips.join("\n"),
+    spec: JSON.stringify(spec),
+  });
   fs.writeFileSync(path.join(dir, "index.html"), out);
   return dir;
 }
@@ -106,12 +129,12 @@ async function renderHyperframes(dir, tmp) {
 }
 
 /** Deterministic fallback: seek the paused timeline frame by frame and pipe screenshots to FFmpeg. */
-async function renderPlaywright(dir, tmp, total) {
+async function renderPlaywright(dir, tmp, total, size) {
   const ff = findFfmpeg();
   if (!ff.ffmpeg) throw new Error("FFmpeg not found");
   const server = await serveDir(dir);
   const browser = await launchChromium();
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport: { width: size.width, height: size.height }, deviceScaleFactor: 1 });
   await page.goto(`${server.url}/index.html`, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction(() => window.__etc && typeof window.__etc.seek === "function");
@@ -170,12 +193,15 @@ async function renderPlaywright(dir, tmp, total) {
   if (code !== 0) throw new Error(`ffmpeg encode failed: ${err.slice(-400)}`);
 }
 
-async function finalize(tmp, out) {
+async function finalize(tmp, out, size, mix) {
   let p = probe(tmp);
   if (!p) throw new Error("ffprobe could not read the render");
-  const compliant = p.codec === "h264" && p.pixFmt === "yuv420p" && p.width === 1920 && p.height === 1080 && Math.abs(p.fps - FPS) < 0.01;
+  // The mix reads the silent video, then writes the final file.
+  const enc = `${tmp}.enc.mp4`;
+  const video = mix ? `${tmp}.silent.mp4` : out;
+  const compliant = p.codec === "h264" && p.pixFmt === "yuv420p" && p.width === size.width && p.height === size.height && Math.abs(p.fps - FPS) < 0.01;
   if (compliant) {
-    await ffmpeg(["-i", tmp, "-map", "0:v:0", "-c", "copy", "-an", "-movflags", "+faststart", out], "remux");
+    await ffmpeg(["-i", tmp, "-map", "0:v:0", "-c", "copy", "-an", ...CLEAN, "-movflags", "+faststart", video], "remux");
   } else {
     log(`  transcoding (${p.codec} ${p.pixFmt} ${p.width}x${p.height} ${p.fps}fps does not match the target)`);
     await ffmpeg(
@@ -185,7 +211,7 @@ async function finalize(tmp, out) {
         "-map",
         "0:v:0",
         "-vf",
-        "scale=1920:1080:flags=lanczos:out_range=tv,format=yuv420p",
+        `scale=${size.width}:${size.height}:flags=lanczos:out_range=tv,format=yuv420p`,
         "-color_range",
         "tv",
         "-r",
@@ -199,23 +225,60 @@ async function finalize(tmp, out) {
         "-pix_fmt",
         "yuv420p",
         "-an",
+        ...CLEAN,
         "-movflags",
         "+faststart",
-        out,
+        enc,
       ],
       "transcode",
     );
+    await stripTags(enc, video);
+    fs.rmSync(enc, { force: true });
+  }
+  let audio = null;
+  if (mix) {
+    audio = await mixAudio(video, out, mix.sb, mix.tl, mix.src);
+    fs.rmSync(video, { force: true });
   }
   for (const crf of [24, 28]) {
     p = probe(out);
     if (p.size <= MAX_MB * 1024 * 1024) break;
     log(`  ${fmtBytes(p.size)} is over ${MAX_MB} MB, re-encoding at CRF ${crf}`);
+    const shrunk = `${out}.shrink.mp4`;
+    // Audio comes from the current output and is copied untouched.
     await ffmpeg(
-      ["-i", tmp, "-map", "0:v:0", "-c:v", "libx264", "-preset", "veryfast", "-crf", String(crf), "-pix_fmt", "yuv420p", "-r", String(FPS), "-an", "-movflags", "+faststart", out],
+      [
+        "-i",
+        tmp,
+        "-i",
+        out,
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a?",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        String(crf),
+        "-pix_fmt",
+        "yuv420p",
+        "-r",
+        String(FPS),
+        "-c:a",
+        "copy",
+        ...CLEAN,
+        "-movflags",
+        "+faststart",
+        shrunk,
+      ],
       "shrink",
     );
+    await stripTags(shrunk, out);
+    fs.rmSync(shrunk, { force: true });
   }
-  return probe(out);
+  return { p: probe(out), audio };
 }
 
 async function makeGif(mp4, gif, duration) {
@@ -238,6 +301,7 @@ async function main() {
   const run = loadRun(args.src);
   if (!exists(path.join(run.src, "tokens.css"))) die("No tokens.css yet. Run theme.mjs first.");
   const { sb, scenes, warnings: buildWarnings } = buildScenes(run.src, { force: !!args.force });
+  const size = formatOf(sb);
   const tl = timeline(scenes);
   if (tl.total < 1) die("Storyboard has no video scenes.");
   let engine = args.engine && args.engine !== "auto" ? args.engine : nodeMajor >= 22 && exists(hfBin) ? "hyperframes" : "playwright";
@@ -251,7 +315,7 @@ async function main() {
   const posterPath = path.join(run.folder, run.layout.poster);
   const titleScene = tl.list.find((s) => s.scene.type === "title") || tl.list[0];
   log(`Baking scenes …`);
-  const reports = await bakeScenes(run.src, scenes, new Map([[titleScene.file, { out: posterPath, scale: 1 }]]));
+  const reports = await bakeScenes(run.src, scenes, new Map([[titleScene.file, { out: posterPath, scale: 1 }]]), size);
   const issues = [
     ...buildWarnings,
     ...reports.flatMap((r) => [
@@ -269,15 +333,16 @@ async function main() {
   const warnings = [];
   try {
     if (engine === "hyperframes") await renderHyperframes(dir, tmp);
-    else await renderPlaywright(dir, tmp, tl.total);
+    else await renderPlaywright(dir, tmp, tl.total, size);
   } catch (e) {
     if (engine !== "hyperframes") throw e;
     warnings.push(`HyperFrames failed, used the Playwright fallback: ${e.message}`);
     log(`! ${e.message}\n  falling back to Playwright frame capture`);
     engine = "playwright";
-    await renderPlaywright(dir, tmp, tl.total);
+    await renderPlaywright(dir, tmp, tl.total, size);
   }
-  const p = await finalize(tmp, out);
+  const { p, audio } = await finalize(tmp, out, size, sb.meta?.audio ? { sb, tl, src: run.src } : null);
+  for (const w of audio?.warnings || []) issues.push({ kind: w.kind, detail: w.detail });
   fs.rmSync(tmp, { force: true });
   let gif = { skipped: true, reason: "disabled with --no-gif" };
   if (args.gif !== false) gif = await makeGif(out, path.join(run.folder, run.layout.gif), p.duration);
@@ -294,6 +359,7 @@ async function main() {
       codec: p.codec,
       pixFmt: p.pixFmt,
       audio: p.audio,
+      audioLevels: audio ? { loudnessLufs: audio.loudnessLufs, truePeakDb: audio.truePeakDb } : null,
       size: fmtBytes(p.size),
       underLimit: p.size <= MAX_MB * 1024 * 1024,
     },

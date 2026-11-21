@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { formatOf } from "./lib/format.mjs";
 import { parseArgs, loadRun, readJson, exists, die, log, fmtBytes, importTool, findChromium } from "./lib/common.mjs";
 
 const args = parseArgs();
@@ -19,6 +20,7 @@ async function main() {
   if (!exists(cfgPath)) die("No mermaid-config.json yet. Run theme.mjs first.");
   const config = readJson(cfgPath);
   const tokens = readJson(path.join(src, "tokens.json"), {});
+  const size = formatOf(readJson(path.join(src, "storyboard.json"), {}));
   const cssUrl = pathToFileURL(path.join(src, "fonts", "mermaid.css"));
   const inDir = path.join(src, "diagrams");
   const outDir = path.join(run.folder, run.layout.diagrams);
@@ -45,7 +47,7 @@ async function main() {
     for (const f of files) {
       const name = path.basename(f, ".mmd");
       const input = path.join(inDir, f);
-      const base = { mermaidConfig: config, customFontCSS: [{ cssUrl }], fontEmbed: true, viewport: { width: 1920, height: 1080, deviceScaleFactor: 2 } };
+      const base = { mermaidConfig: config, customFontCSS: [{ cssUrl }], fontEmbed: true, viewport: { width: size.width, height: size.height, deviceScaleFactor: 2 } };
       const outs = [
         { file: path.join(outDir, `${name}.svg`), opts: { ...base, backgroundColor: "transparent" } },
         { file: path.join(outDir, `${name}.png`), opts: { ...base, backgroundColor: bg } },

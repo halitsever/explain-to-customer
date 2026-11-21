@@ -6,10 +6,11 @@
   margin: 0;
   padding: 0;
 }
+/* The documents set --stage-w and --stage-h on <html> from meta.aspect. */
 html,
 body {
-  width: 1920px;
-  height: 1080px;
+  width: var(--stage-w, 1920px);
+  height: var(--stage-h, 1080px);
   overflow: hidden;
   background: var(--bg);
 }
@@ -27,8 +28,8 @@ img {
 
 .stage {
   position: relative;
-  width: 1920px;
-  height: 1080px;
+  width: var(--stage-w, 1920px);
+  height: var(--stage-h, 1080px);
   overflow: hidden;
   background-color: var(--bg);
   background-image: var(--bg-image);
@@ -560,8 +561,105 @@ code,
 /* QA overlay for safe margins, enabled with ?safe=1 */
 .safe-guide {
   position: absolute;
-  inset: 54px 96px;
+  inset: calc(var(--stage-h, 1080px) * 0.05) calc(var(--stage-w, 1920px) * 0.05);
   outline: 2px dashed red;
   z-index: 99;
   pointer-events: none;
+}
+
+/* Portrait formats: one column, everything stacked. Type minimums stay, they read fine at 1080 wide. */
+:is([data-format="4-5"], [data-format="9-16"]) .scene {
+  padding: 96px 72px;
+  gap: 48px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .scene > .body {
+  flex-direction: column;
+}
+:is([data-format="4-5"], [data-format="9-16"]) :is(.h-title, .h-scene, .lead, .actions) {
+  max-width: 100%;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .h-title {
+  font-size: max(72px, calc(96px * var(--type-scale)));
+}
+:is([data-format="4-5"], [data-format="9-16"]) .ba {
+  flex: none;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 72px auto;
+}
+/* Content height, so a tall card pushes into the safe-area check instead of clipping its thumbnail. */
+:is([data-format="4-5"], [data-format="9-16"]) :is(.ba .card, .step, .benefit) {
+  min-height: auto;
+}
+/* Rotate the icon, not .arrow: GSAP animates the transform of [data-anim] elements. */
+:is([data-format="4-5"], [data-format="9-16"]) .ba .arrow .icon {
+  transform: rotate(90deg);
+}
+:is([data-format="4-5"], [data-format="9-16"]) .ba .thumb {
+  height: 240px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .shot-layout {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 48px;
+  align-items: stretch;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .steps {
+  grid-auto-flow: row;
+  gap: 28px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .step {
+  flex-direction: row;
+  align-items: center;
+  gap: 32px;
+  padding: 36px 40px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .step .num {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  font-size: 44px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .benefits {
+  grid-template-columns: 1fr;
+  gap: 28px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .benefit {
+  flex-direction: row;
+  align-items: center;
+  padding: 36px 40px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .scene--summary-card {
+  padding: 96px 72px;
+  gap: 28px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .summary {
+  flex: none;
+  grid-template-columns: 1fr;
+  gap: 28px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .summary .left {
+  gap: 28px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .points {
+  gap: 16px;
+}
+/* Label beside the text keeps the pair short enough to fit under the points. Subgrid lines up both texts. */
+:is([data-format="4-5"], [data-format="9-16"]) .mini-ba {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .mini-ba .card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  column-gap: 28px;
+  padding: 28px 36px;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .mini-ba .pill {
+  justify-self: start;
+}
+:is([data-format="4-5"], [data-format="9-16"]) .mini-ba .arrow {
+  display: none;
 }

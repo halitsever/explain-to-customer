@@ -87,6 +87,8 @@ Without AskUserQuestion (non-interactive run) use the defaults: recommended form
 
 Then save the answers: `node "${CLAUDE_SKILL_DIR}/scripts/preflight.mjs" --remember '{"format":"…","saveTo":"…","style":"…","screenshots":"…"}'`.
 
+Video is 16:9 and silent unless the user asks for another frame, sound or their own scene templates; see `reference/video.md`.
+
 ## Step 4: Brief, storyboard, approval
 
 1. Read `reference/storytelling.md` now.

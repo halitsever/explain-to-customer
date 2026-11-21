@@ -4,7 +4,7 @@ Read when the format includes images.
 
 ## What to produce
 
-3–5 PNG slides at 1920×1080, rendered at device scale factor 2 (3840×2160 files), into `<folder>/<layout.images>/`:
+3–5 PNG slides at 1920×1080 (or the `meta.aspect` frame, see `reference/video.md`), rendered at device scale factor 2 (3840×2160 files at 16:9), into `<folder>/<layout.images>/`:
 
 - `01-summary.png`: the `summary-card` scene. It must stand on its own when forwarded: title, 3 short points, one key visual (an annotated screenshot or a before/after pair), and "what you need to do".
 - `02-…` to `05-…`: the most useful content scenes, usually before-after, screenshot-callouts, steps, benefits or diagram. Title and outro scenes add nothing as stills.
