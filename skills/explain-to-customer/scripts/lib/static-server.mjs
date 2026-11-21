@@ -45,7 +45,21 @@ export function serveDir(root, { port = 0, spa = false } = {}) {
         res.writeHead(404, { "content-type": "text/plain" }).end("not found");
         return;
       }
-      res.writeHead(200, { "content-type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream", "cache-control": "no-store" });
+      const head = { "content-type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream", "cache-control": "no-store", "accept-ranges": "bytes" };
+      // Chromium only seeks a <video> freely when the server answers range requests.
+      const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+      if (m && (m[1] || m[2])) {
+        const start = m[1] ? Number(m[1]) : Math.max(0, data.length - Number(m[2]));
+        const end = m[1] && m[2] ? Math.min(Number(m[2]), data.length - 1) : data.length - 1;
+        if (start >= data.length || start > end) {
+          res.writeHead(416, { "content-range": `bytes */${data.length}` }).end();
+          return;
+        }
+        res.writeHead(206, { ...head, "content-range": `bytes ${start}-${end}/${data.length}`, "content-length": end - start + 1 });
+        res.end(data.subarray(start, end + 1));
+        return;
+      }
+      res.writeHead(200, head);
       res.end(data);
     });
   });

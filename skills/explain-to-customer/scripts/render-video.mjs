@@ -10,7 +10,7 @@ import { spawn } from "node:child_process";
 import { parseArgs, loadRun, exists, die, log, fmtBytes, readJson, WS, SKILL_DIR, renderEnv, runStream, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
 import { mixAudio, stripTags, CLEAN } from "./lib/audio.mjs";
 import { formatOf } from "./lib/format.mjs";
-import { buildScenes, timeline, sectionOf, fillComposition } from "./lib/scenes.mjs";
+import { buildScenes, timeline, sectionOf, fillComposition, compositionCss } from "./lib/scenes.mjs";
 import { bakeScenes } from "./lib/stills.mjs";
 import { serveDir } from "./lib/static-server.mjs";
 
@@ -53,7 +53,22 @@ function buildComposition(src, sb, tl) {
     const section = sectionOf(fs.readFileSync(s.path, "utf8"));
     if (!section) throw new Error(`Scene ${s.file} lost its <!--scene:start--> markers`);
     const id = `clip-${i + 1}`;
-    const html = section.replace(/(src|href)="\.\.\//g, '$1="');
+    // HyperFrames extracts video frames on its own clock and finds them by id, so each clip gets an id and its absolute window.
+    let n = 0;
+    const html = section.replace(/(src|href)="\.\.\//g, '$1="').replace(/<video\b([^>]*?)\sdata-clip-start="([\d.]+)"/g, (_, pre, at) => {
+      const off = Math.min(Number(at) || 0, s.duration);
+      const vid = /\sid="/.test(pre) ? "" : ` id="${id}-video-${++n}"`;
+      return `<video${pre}${vid} data-start="${+(s.start + off).toFixed(3)}" data-duration="${+(s.duration - off).toFixed(3)}" data-clip-start="${at}"`;
+    });
+    // Assets that already sat inside _source keep their own folder, so bring those across too.
+    for (const [, rel] of section.matchAll(/(?:src|href)="\.\.\/([^"]+)"/g)) {
+      const from = path.join(src, rel);
+      const to = path.join(dir, rel);
+      if (!rel.includes("..") && exists(from) && !exists(to)) {
+        fs.mkdirSync(path.dirname(to), { recursive: true });
+        fs.copyFileSync(from, to);
+      }
+    }
     clips.push(`<div class="clip" id="${id}" data-start="${s.start}" data-duration="${s.duration}" data-track-index="0">\n${html}\n</div>`);
     spec.scenes.push({ id, start: s.start, duration: s.duration, transition: s.scene.transition || "fade" });
   });
@@ -65,6 +80,7 @@ function buildComposition(src, sb, tl) {
     lang: sb.meta?.lang || "en",
     title: String(sb.meta?.title || "Explainer").replace(/</g, "&lt;"),
     total: tl.total,
+    sceneCss: compositionCss(sb),
     clips: clips.join("\n"),
     spec: JSON.stringify(spec),
   });

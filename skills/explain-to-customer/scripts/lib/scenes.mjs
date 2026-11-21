@@ -6,6 +6,8 @@ import { SKILL_DIR, WS, readJson, exists, mkdirp, escapeHtml, resolveTool } from
 
 const TPL = path.join(SKILL_DIR, "templates", "scenes");
 export const STILL_ONLY = new Set(["summary-card"]);
+export const BUILT_IN = ["title", "before-after", "screenshot-callouts", "steps", "diagram", "benefits", "action-needed", "outro", "summary-card"];
+const LIB_FILES = ["base.css", "runtime.js", "anim.js", "gsap.min.js", "CustomEase.min.js", "rough.js"];
 
 export const LABELS = {
   tr: { before: "Önce", after: "Şimdi", action: "Sizden beklenen", none: "Sizin bir şey yapmanıza gerek yok." },
@@ -71,6 +73,60 @@ function img(src, p, attrs = "") {
   if (!a) return "";
   if (a.missing) return `<img src="../${escapeHtml(a.missing)}" alt="" data-missing ${attrs}>`;
   return `<img src="../${escapeHtml(a.rel)}" alt="" ${attrs}>`;
+}
+
+/** Muted because the soundtrack comes from meta.audio. data-clip-start is seconds into the scene where playback begins. */
+export function video(src, p, attrs = "", start = 0) {
+  const a = localAsset(src, p);
+  if (!a) return "";
+  const base = `muted playsinline preload="auto" data-clip-start="${Number(start) || 0}"`;
+  if (a.missing) return `<video src="../${escapeHtml(a.missing)}" ${base} data-missing ${attrs}></video>`;
+  return `<video src="../${escapeHtml(a.rel)}" ${base} ${attrs}></video>`;
+}
+
+/** External templates in meta.sceneDir, used only for types that are not built in. */
+const externalTemplate = (sb, type) => {
+  const dir = sb.meta?.sceneDir;
+  const file = dir && !BUILT_IN.includes(type) ? path.join(dir, `${type}.html`) : null;
+  return file && exists(file) ? fs.readFileSync(file, "utf8") : null;
+};
+
+/** Scene CSS from meta.sceneDir as names inside lib/. A name that clashes with a runtime file gets a prefix. */
+export function sceneCss(sb) {
+  const dir = sb.meta?.sceneDir;
+  if (!dir || !exists(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".css"))
+    .sort()
+    .map((f) => ({ from: path.join(dir, f), name: LIB_FILES.includes(f) ? `scene-${f}` : f }));
+}
+const cssLinks = (sb, prefix) =>
+  sceneCss(sb)
+    .map((c) => `<link rel="stylesheet" href="${prefix}lib/${escapeHtml(c.name)}">`)
+    .join("\n");
+
+function externalSection(tplText, scene, ctx) {
+  const { src } = ctx;
+  const t = scene.onScreenText || [];
+  const values = {
+    id: escapeHtml(scene.id || scene.type),
+    heading: md(t[0] || ""),
+    lines: t
+      .slice(1)
+      .map((l) => `<p>${md(l)}</p>`)
+      .join(""),
+  };
+  for (const [k, v] of Object.entries(scene.data || {})) {
+    if (typeof v !== "string" && typeof v !== "number") continue;
+    if (k.endsWith("Video")) values[k] = video(src, String(v));
+    else if (k.endsWith("Image")) values[k] = img(src, String(v));
+    else values[k] = md(v);
+  }
+  const missing = [...new Set([...tplText.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).filter((k) => values[k] === undefined))];
+  if (missing.length)
+    ctx.warnings.push({ scene: scene.id, kind: "template-missing-key", detail: `${scene.type}.html uses ${missing.map((k) => `{{${k}}}`).join(", ")} with no value in the scene` });
+  return fillTpl(tplText, values);
 }
 
 const illustration = (name = "spark") =>
@@ -183,17 +239,20 @@ function sectionFor(scene, ctx) {
         visual,
       });
     }
-    default:
-      throw new Error(
-        `Unknown scene type "${scene.type}" (scene ${scene.id}). Use: title, before-after, screenshot-callouts, steps, diagram, benefits, action-needed, outro, summary-card.`,
-      );
+    default: {
+      const ext = externalTemplate(sb, scene.type);
+      if (ext !== null) return externalSection(ext, scene, ctx);
+      const where = sb.meta?.sceneDir ? `no ${scene.type}.html in sceneDir ${sb.meta.sceneDir}` : "no meta.sceneDir set";
+      throw new Error(`Unknown scene type "${scene.type}" (scene ${scene.id}), ${where}. Use: ${BUILT_IN.join(", ")}, or add <sceneDir>/${scene.type}.html.`);
+    }
   }
 }
 
 /** Copy the scene runtime (CSS, bake script, GSAP, rough.js) into _source/lib so _source renders offline on its own. */
-export function writeLib(src) {
+export function writeLib(src, sb = {}) {
   const lib = path.join(src, "lib");
   mkdirp(lib);
+  for (const c of sceneCss(sb)) fs.copyFileSync(c.from, path.join(lib, c.name));
   for (const f of ["base.css", "runtime.js", "anim.js"]) fs.copyFileSync(path.join(TPL, f), path.join(lib, f));
   const gsapDir = path.dirname(resolveTool("gsap", "package.json"));
   fs.copyFileSync(path.join(gsapDir, "dist", "gsap.min.js"), path.join(lib, "gsap.min.js"));
@@ -209,7 +268,7 @@ export function buildScenes(src, { force = false } = {}) {
   const sbPath = path.join(src, "storyboard.json");
   const sb = readJson(sbPath);
   if (!Array.isArray(sb.scenes) || !sb.scenes.length) throw new Error("storyboard.json has no scenes");
-  writeLib(src);
+  writeLib(src, sb);
   const dir = path.join(src, "scenes");
   mkdirp(dir);
   const labels = labelsFor(sb);
@@ -224,12 +283,15 @@ export function buildScenes(src, { force = false } = {}) {
     wanted.add(file);
     const p = path.join(dir, file);
     const keep = exists(p) && /<section[^>]*\sdata-keep/.test(fs.readFileSync(p, "utf8"));
-    const stale = !exists(p) || fs.statSync(p).mtimeMs < sbTime;
+    const ext = sb.meta?.sceneDir && !BUILT_IN.includes(scene.type) ? path.join(sb.meta.sceneDir, `${scene.type}.html`) : null;
+    // An edited external template counts as a storyboard change for its scenes.
+    const since = Math.max(sbTime, ext && exists(ext) ? fs.statSync(ext).mtimeMs : 0);
+    const stale = !exists(p) || fs.statSync(p).mtimeMs < since;
     const needsBody = ["screenshot-callouts", "steps", "benefits"].includes(scene.type);
     if (needsBody && textLines(scene).length < 2)
       warnings.push({ scene: scene.id, kind: "empty-scene", detail: `${scene.type} has only a heading; put the lines in onScreenText[1..]` });
     if (force || (stale && !keep)) {
-      const section = sectionFor(scene, { src, sb, labels });
+      const section = sectionFor(scene, { src, sb, labels, warnings });
       fs.writeFileSync(
         p,
         fillTpl(doc, {
@@ -238,6 +300,7 @@ export function buildScenes(src, { force = false } = {}) {
           format: size.slug,
           lang: escapeHtml(sb.meta?.lang || "en"),
           title: escapeHtml(`${scene.id} · ${sb.meta?.title || ""}`),
+          sceneCss: cssLinks(sb, "../"),
           section,
         }),
       );
@@ -260,6 +323,8 @@ export function timeline(scenes) {
   }
   return { list, total: +t.toFixed(3) };
 }
+
+export const compositionCss = (sb) => cssLinks(sb, "");
 
 export const sectionOf = (html) => {
   const m = html.match(/<!--scene:start-->([\s\S]*?)<!--scene:end-->/);

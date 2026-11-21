@@ -162,18 +162,31 @@
     });
   }
 
+  /** Resolves once the first frame is decoded, or the clip failed, so stills never show a blank video. */
+  function videoReady(v) {
+    if (v.readyState >= 2 || v.error) return null;
+    return new Promise(function (r) {
+      v.addEventListener("loadeddata", r, { once: true });
+      v.addEventListener("error", r, { once: true });
+      setTimeout(r, 10000);
+    });
+  }
+
   window.__etcBake = function () {
     return document.fonts.ready
       .then(function () {
         var imgs = Array.prototype.slice.call(document.images);
+        var vids = Array.prototype.slice.call(document.querySelectorAll("video"));
         return Promise.all(
-          imgs.map(function (im) {
-            return im.complete
-              ? null
-              : new Promise(function (r) {
-                  im.onload = im.onerror = r;
-                });
-          }),
+          imgs
+            .map(function (im) {
+              return im.complete
+                ? null
+                : new Promise(function (r) {
+                    im.onload = im.onerror = r;
+                  });
+            })
+            .concat(vids.map(videoReady)),
         );
       })
       .then(function () {
@@ -188,6 +201,14 @@
             return im.getAttribute("src");
           });
         if (broken.length) issues.push({ kind: "missing-image", src: broken });
+        var clips = Array.prototype.filter
+          .call(document.querySelectorAll("video"), function (v) {
+            return v.error || v.readyState < 2;
+          })
+          .map(function (v) {
+            return v.getAttribute("src");
+          });
+        if (clips.length) issues.push({ kind: "asset-missing", src: clips });
         return fontReport().then(function (fonts) {
           return { fonts: fonts, issues: issues };
         });

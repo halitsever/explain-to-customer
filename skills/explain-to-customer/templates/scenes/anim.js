@@ -72,6 +72,31 @@
     tl.fromTo(el, from, to, t);
   }
 
+  /** The timeout keeps a stalled clip from hanging the whole render. */
+  function once(v, name) {
+    return new Promise(function (r) {
+      v.addEventListener(name, r, { once: true });
+      v.addEventListener("error", r, { once: true });
+      setTimeout(r, 10000);
+    });
+  }
+
+  /** Holds the last frame once the clip is shorter than the scene. Waiting for seeked keeps frame capture deterministic. */
+  function seekVideo(v, local) {
+    if (v.error) return null;
+    var meta = v.readyState >= 1 ? Promise.resolve() : once(v, "loadedmetadata");
+    return meta.then(function () {
+      if (v.error) return null;
+      v.pause();
+      // 1 ms past the frame time, since float rounding can land just before it and show the previous frame.
+      var target = Math.max(0, Math.min(local, v.duration - 1 / 30)) + 0.001;
+      if (Math.abs(v.currentTime - target) < 1e-4 && !v.seeking && v.readyState >= 2) return null;
+      var done = once(v, "seeked");
+      v.currentTime = target;
+      return done;
+    });
+  }
+
   window.ETC = {
     build: function (spec) {
       var tl = gsap.timeline({ paused: true });
@@ -106,13 +131,20 @@
       });
       window.__etc = {
         duration: spec.total,
-        /** Used by the Playwright fallback engine; HyperFrames handles clip visibility itself. */
+        /** Used by the Playwright fallback engine; HyperFrames handles clip visibility itself. Resolves once every visible video frame is decoded. */
         seek: function (t) {
+          var waits = [];
           clips.forEach(function (c, i) {
             var on = t >= c.start && (t < c.end || (i === clips.length - 1 && t <= c.end));
             if (c.el) c.el.style.visibility = on ? "visible" : "hidden";
+            if (on && c.el) {
+              c.el.querySelectorAll("video[data-clip-start]").forEach(function (v) {
+                waits.push(seekVideo(v, t - c.start - (parseFloat(v.getAttribute("data-clip-start")) || 0)));
+              });
+            }
           });
           tl.seek(t, false);
+          return Promise.all(waits);
         },
       };
       return tl;

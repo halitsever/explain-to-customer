@@ -20,12 +20,20 @@ clearer-error-messages-on-sign-up/
 ## Video
 
 - 30 to 60 seconds, 90 at most, in four to seven scenes
-- 1920×1080, 30 fps, H.264, no audio track, ready to stream (`faststart`)
+- 1920×1080 by default, 30 fps, H.264, ready to stream (`faststart`)
 - captions burned in: short lines that stay on screen long enough to read
 - re-encoded smaller when it would go over 25 MB, so it fits in an email
 - a poster image and a GIF preview for chat apps
 
 <video src="/media/demo.mp4" poster="/media/demo-poster.webp" controls muted playsinline style="width:100%;border-radius:12px"></video>
+
+**Formats.** Set `meta.aspect` in the storyboard to `"4:5"` (1080×1350) or `"9:16"` (1080×1920) for feeds and stories. The scenes switch to a stacked portrait layout on their own.
+
+**Audio.** The video is silent unless the storyboard has `meta.audio`. Add a music file and short sound cues, either at fixed times or per scene with `sfx`, and the render mixes them to a steady -14 LUFS with the music ducked under the cues.
+
+**Your own scene templates.** Point `meta.sceneDir` at a folder of HTML templates and any scene type that isn't built in is rendered from `<type>.html` in that folder, with its CSS files loaded after the style. Placeholders such as `{{heading}}`, `{{lines}}` and `{{tagline}}` are filled from the scene, and a placeholder with no value shows up as a warning instead of vanishing.
+
+**Screen recordings.** A `scene.data` key ending in `Video` places a muted clip in the scene. It plays in step with the video frame by frame and holds its last frame if the scene runs longer. A missing file is reported, not skipped silently.
 
 ## Slides
 

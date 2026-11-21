@@ -11,7 +11,7 @@ Read when the format includes video.
 3. Saves the title scene as `<slug>-poster.png`.
 4. Assembles `SRC/video/index.html`, a HyperFrames composition: each scene is a `.clip` with `data-start`/`data-duration`, and one paused GSAP timeline is registered on `window.__timelines.main`. GSAP, fonts and assets are copied locally; nothing loads from a CDN.
 5. Renders with the HyperFrames CLI from the tool workspace (local Chrome + FFmpeg, telemetry off, Playwright's Chromium shared through `HYPERFRAMES_BROWSER_PATH`).
-6. Verifies H.264, `yuv420p`, 1920×1080, 30 fps; remuxes with `+faststart` and no audio track; transcodes only when the render misses the target; re-encodes at CRF 24 then 28 when over 25 MB.
+6. Verifies H.264, `yuv420p`, the format's size, 30 fps; remuxes with `+faststart`; mixes the audio track when `meta.audio` is set; transcodes only when the render misses the target; re-encodes at CRF 24 then 28 when over 25 MB.
 7. Writes `<slug>-preview.gif`: 960 px, 12 fps, palettegen/paletteuse. Over 10 MB it retries at 10 fps and 800 px, then trims to 15 s, then skips and says so.
 
 ## Commands
@@ -34,6 +34,35 @@ Motion comes from the style (`motion.entrance`, duration, easing, stagger) throu
 - Wording, order or timing: edit `storyboard.json`, re-run render-video.mjs.
 - Layout of one scene: edit its `SRC/scenes/NN-<id>.html` between the `<!--scene:start-->` markers and add `data-keep` to its `<section>` so later storyboard edits do not overwrite it. Use only classes from `lib/base.css` and CSS variables from `tokens.css`, so a style switch still works.
 - Style switch: `theme.mjs --style <id> --src SRC`, then re-render. Scenes pick up the new tokens without a rebuild.
+
+## Formats
+
+`meta.aspect` sets the frame: `"16:9"` (1920×1080, the default), `"4:5"` (1080×1350) or `"9:16"` (1080×1920). Portrait formats stack the layouts and let headings take three lines. `meta.format` is the deliverable setting and does not change the frame.
+
+## Audio
+
+Without `meta.audio` the video has no audio track. With it, the render mixes a music bed and sound cues after the video encode, normalised to -14 LUFS:
+
+```json
+"meta": { "audio": { "music": "audio/bed.mp3", "musicGainDb": -16, "duckDb": 6, "cues": [{ "at": 2.5, "sound": "audio/pop.wav" }] } }
+```
+
+Per scene, `"sfx": [{ "sound": "audio/whoosh.wav", "offsetS": 0.2, "gainDb": -3 }]` plays a cue relative to the scene start. Paths resolve against `_source`. A missing file or a cue past the end becomes a warning, never a failed render.
+
+## Scene templates from a folder
+
+`meta.sceneDir` is an absolute path to a folder of extra scene types. A scene whose `type` is not built in renders from `<sceneDir>/<type>.html`; built-in types always use their own template. Placeholders:
+
+- `{{id}}`: the scene id
+- `{{heading}}`: `onScreenText[0]`
+- `{{lines}}`: `onScreenText[1..]`, one `<p>` each
+- `{{<key>}}`: any string in `scene.data`. Keys ending in `Image` become `<img>`, keys ending in `Video` become a clip (below)
+
+Text is escaped and `**word**` becomes `<mark>`. A placeholder with no value is left empty and reported as `template-missing-key`. Every `<sceneDir>/*.css` is copied into `_source/lib/` and loaded after `tokens.css`, so templates can use the style's CSS variables.
+
+## Clips
+
+`"data": { "demoVideo": "/abs/path/recording.mp4" }` with `{{demoVideo}}` in the template places a muted `<video>`; its own sound is never used. The clip starts with the scene and follows the video timeline frame by frame in both engines. A clip shorter than its scene holds the last frame. A missing file is reported as `asset-missing`. Style the `<video>` from the scene CSS (`object-fit`, size, position).
 
 ## Fallback engine
 
