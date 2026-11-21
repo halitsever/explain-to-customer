@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="{{lang}}">
+<html lang="{{lang}}" data-format="{{format}}" style="--stage-w:{{width}}px;--stage-h:{{height}}px">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1920, height=1080">
+<meta name="viewport" content="width={{width}}, height={{height}}">
 <title>{{title}}</title>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="lib/base.css">
@@ -12,7 +12,7 @@
 <script src="lib/CustomEase.min.js"></script>
 </head>
 <body>
-<div id="root" class="stage" data-composition-id="main" data-start="0" data-duration="{{total}}" data-width="1920" data-height="1080" data-fps="30">
+<div id="root" class="stage" data-composition-id="main" data-start="0" data-duration="{{total}}" data-width="{{width}}" data-height="{{height}}" data-fps="30">
 {{clips}}
 </div>
 <script src="lib/anim.js"></script>

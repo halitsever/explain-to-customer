@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs, loadRun, readJson, writeJson, exists, die, fmtBytes, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
+import { formatOf } from "./lib/format.mjs";
 import { timeline, sceneFileName } from "./lib/scenes.mjs";
 import { serveDir } from "./lib/static-server.mjs";
 import { diagramLabels } from "./lib/diagram-text.mjs";
@@ -261,7 +262,8 @@ async function main() {
     report.checks.video = { ...p, faststart: fast, sizeHuman: fmtBytes(p.size) };
     if (p.codec !== "h264") err("video", `codec ${p.codec}, expected h264`);
     if (p.pixFmt !== "yuv420p") err("video", `pix_fmt ${p.pixFmt}, expected yuv420p`);
-    if (p.width !== 1920 || p.height !== 1080) err("video", `${p.width}x${p.height}, expected 1920x1080`);
+    const f = formatOf(sb || {});
+    if (p.width !== f.width || p.height !== f.height) err("video", `${p.width}x${p.height}, expected ${f.width}x${f.height}`);
     if (Math.abs(p.fps - 30) > 0.01) err("video", `${p.fps} fps, expected 30`);
     if (p.audio) err("video", "has an audio track; expected none");
     if (!fast) err("video", "moov atom is not at the start (missing +faststart)");

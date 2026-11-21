@@ -1,6 +1,7 @@
 /** storyboard.json -> standalone scene documents in _source/scenes/. The same documents feed stills and the video. */
 import fs from "node:fs";
 import path from "node:path";
+import { formatOf } from "./format.mjs";
 import { SKILL_DIR, WS, readJson, exists, mkdirp, escapeHtml, resolveTool } from "./common.mjs";
 
 const TPL = path.join(SKILL_DIR, "templates", "scenes");
@@ -210,6 +211,7 @@ export function buildScenes(src, { force = false } = {}) {
   const labels = labelsFor(sb);
   const sbTime = fs.statSync(sbPath).mtimeMs;
   const doc = fs.readFileSync(path.join(TPL, "_document.html"), "utf8");
+  const size = formatOf(sb);
   const wanted = new Set();
   const out = [];
   const warnings = [];
@@ -224,7 +226,17 @@ export function buildScenes(src, { force = false } = {}) {
       warnings.push({ scene: scene.id, kind: "empty-scene", detail: `${scene.type} has only a heading; put the lines in onScreenText[1..]` });
     if (force || (stale && !keep)) {
       const section = sectionFor(scene, { src, sb, labels });
-      fs.writeFileSync(p, fillTpl(doc, { lang: escapeHtml(sb.meta?.lang || "en"), title: escapeHtml(`${scene.id} · ${sb.meta?.title || ""}`), section }));
+      fs.writeFileSync(
+        p,
+        fillTpl(doc, {
+          width: size.width,
+          height: size.height,
+          format: size.slug,
+          lang: escapeHtml(sb.meta?.lang || "en"),
+          title: escapeHtml(`${scene.id} · ${sb.meta?.title || ""}`),
+          section,
+        }),
+      );
     }
     out.push({ index: i, scene, file, path: p });
   });

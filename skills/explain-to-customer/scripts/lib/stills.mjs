@@ -7,16 +7,16 @@ import { sectionOf } from "./scenes.mjs";
 
 /**
  * scenes: [{ file, path }]; shots: Map(file -> { out, scale }).
- * Writes the baked <section> back into each scene file, returns per-scene reports.
+ * size: { width, height } of the stage. Writes the baked <section> back into each scene file, returns per-scene reports.
  */
-export async function bakeScenes(src, scenes, shots = new Map()) {
+export async function bakeScenes(src, scenes, shots = new Map(), size = { width: 1920, height: 1080 }) {
   const server = await serveDir(src);
   const browser = await launchChromium();
   const reports = [];
   try {
     const scales = [...new Set([1, ...[...shots.values()].map((s) => s.scale || 2)])];
     const contexts = new Map();
-    for (const scale of scales) contexts.set(scale, await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: scale }));
+    for (const scale of scales) contexts.set(scale, await browser.newContext({ viewport: { width: size.width, height: size.height }, deviceScaleFactor: scale }));
     for (const s of scenes) {
       const shot = shots.get(s.file);
       const ctx = contexts.get(shot?.scale || 1);
@@ -35,7 +35,7 @@ export async function bakeScenes(src, scenes, shots = new Map()) {
       }
       if (shot) {
         fs.mkdirSync(path.dirname(shot.out), { recursive: true });
-        await page.screenshot({ path: shot.out, clip: { x: 0, y: 0, width: 1920, height: 1080 } });
+        await page.screenshot({ path: shot.out, clip: { x: 0, y: 0, width: size.width, height: size.height } });
       }
       reports.push({ file: s.file, ...report, errors, output: shot?.out || null });
       await page.close();
