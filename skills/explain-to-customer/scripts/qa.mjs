@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs, loadRun, readJson, writeJson, exists, die, fmtBytes, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
+import { measureLoudness } from "./lib/audio.mjs";
 import { formatOf } from "./lib/format.mjs";
 import { timeline, sceneFileName } from "./lib/scenes.mjs";
 import { serveDir } from "./lib/static-server.mjs";
@@ -115,6 +116,7 @@ function probe(file) {
   const r = runSync(ff.ffprobe, ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", file], { timeout: 20000 });
   if (r.code !== 0) return null;
   const j = JSON.parse(r.stdout);
+  const tags = j.format?.tags || {};
   const v = j.streams.find((s) => s.codec_type === "video");
   const [n, d] = String(v?.r_frame_rate || "0/1")
     .split("/")
@@ -128,6 +130,7 @@ function probe(file) {
     duration: Number(j.format?.duration || 0),
     size: Number(j.format?.size || fs.statSync(file).size),
     audio: j.streams.some((s) => s.codec_type === "audio"),
+    tags: ["title", "comment", "encoder"].filter((k) => Object.keys(tags).some((t) => t.toLowerCase() === k)),
   };
 }
 
@@ -265,7 +268,19 @@ async function main() {
     const f = formatOf(sb || {});
     if (p.width !== f.width || p.height !== f.height) err("video", `${p.width}x${p.height}, expected ${f.width}x${f.height}`);
     if (Math.abs(p.fps - 30) > 0.01) err("video", `${p.fps} fps, expected 30`);
-    if (p.audio) err("video", "has an audio track; expected none");
+    if (sb?.meta?.audio) {
+      if (!p.audio) warn("video", "meta.audio is set but the video has no audio track");
+      else {
+        const m = measureLoudness(mp4);
+        report.checks.audio = m;
+        if (!m) err("video", "could not measure the audio loudness");
+        else {
+          if (Math.abs(m.loudnessLufs + 14) > 1) err("video", `loudness ${m.loudnessLufs} LUFS, expected -14 +/- 1`);
+          if (m.truePeakDb !== null && m.truePeakDb > -1) err("video", `true peak ${m.truePeakDb} dBTP is above -1`);
+        }
+      }
+    } else if (p.audio) err("video", "has an audio track; expected none");
+    for (const t of p.tags) err("video", `container has a ${t} tag; expected none`);
     if (!fast) err("video", "moov atom is not at the start (missing +faststart)");
     if (p.size > 25 * 1024 * 1024) warn("video", `${fmtBytes(p.size)} is over the 25 MB email limit`);
     if (p.duration > 90) err("video", `${p.duration.toFixed(1)} s is over the 90 s maximum`);

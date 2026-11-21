@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Baked scenes -> HyperFrames composition -> MP4 (1920x1080 by default, 30 fps, H.264, yuv420p, faststart, no audio),
+ * Baked scenes -> HyperFrames composition -> MP4 (1920x1080 by default, 30 fps, H.264, yuv420p, faststart, AAC audio when meta.audio is set),
  * plus a poster PNG (title scene) and a GIF preview.
  *   render-video.mjs --src <folder>/_source [--engine auto|hyperframes|playwright] [--no-gif] [--estimate] [--force]
  */
@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs, loadRun, exists, die, log, fmtBytes, readJson, WS, SKILL_DIR, renderEnv, runStream, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
+import { mixAudio, CLEAN } from "./lib/audio.mjs";
 import { formatOf } from "./lib/format.mjs";
 import { buildScenes, timeline, sectionOf, fillComposition } from "./lib/scenes.mjs";
 import { bakeScenes } from "./lib/stills.mjs";
@@ -176,12 +177,14 @@ async function renderPlaywright(dir, tmp, total, size) {
   if (code !== 0) throw new Error(`ffmpeg encode failed: ${err.slice(-400)}`);
 }
 
-async function finalize(tmp, out, size) {
+async function finalize(tmp, out, size, mix) {
   let p = probe(tmp);
   if (!p) throw new Error("ffprobe could not read the render");
+  // The mix reads the silent video, then writes the final file.
+  const video = mix ? `${tmp}.silent.mp4` : out;
   const compliant = p.codec === "h264" && p.pixFmt === "yuv420p" && p.width === size.width && p.height === size.height && Math.abs(p.fps - FPS) < 0.01;
   if (compliant) {
-    await ffmpeg(["-i", tmp, "-map", "0:v:0", "-c", "copy", "-an", "-movflags", "+faststart", out], "remux");
+    await ffmpeg(["-i", tmp, "-map", "0:v:0", "-c", "copy", "-an", ...CLEAN, "-movflags", "+faststart", video], "remux");
   } else {
     log(`  transcoding (${p.codec} ${p.pixFmt} ${p.width}x${p.height} ${p.fps}fps does not match the target)`);
     await ffmpeg(
@@ -205,23 +208,57 @@ async function finalize(tmp, out, size) {
         "-pix_fmt",
         "yuv420p",
         "-an",
+        ...CLEAN,
         "-movflags",
         "+faststart",
-        out,
+        video,
       ],
       "transcode",
     );
+  }
+  let audio = null;
+  if (mix) {
+    audio = await mixAudio(video, out, mix.sb, mix.tl, mix.src);
+    fs.rmSync(video, { force: true });
   }
   for (const crf of [24, 28]) {
     p = probe(out);
     if (p.size <= MAX_MB * 1024 * 1024) break;
     log(`  ${fmtBytes(p.size)} is over ${MAX_MB} MB, re-encoding at CRF ${crf}`);
+    const shrunk = `${out}.shrink.mp4`;
+    // Audio comes from the current output and is copied untouched.
     await ffmpeg(
-      ["-i", tmp, "-map", "0:v:0", "-c:v", "libx264", "-preset", "veryfast", "-crf", String(crf), "-pix_fmt", "yuv420p", "-r", String(FPS), "-an", "-movflags", "+faststart", out],
+      [
+        "-i",
+        tmp,
+        "-i",
+        out,
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a?",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        String(crf),
+        "-pix_fmt",
+        "yuv420p",
+        "-r",
+        String(FPS),
+        "-c:a",
+        "copy",
+        ...CLEAN,
+        "-movflags",
+        "+faststart",
+        shrunk,
+      ],
       "shrink",
     );
+    fs.renameSync(shrunk, out);
   }
-  return probe(out);
+  return { p: probe(out), audio };
 }
 
 async function makeGif(mp4, gif, duration) {
@@ -284,7 +321,8 @@ async function main() {
     engine = "playwright";
     await renderPlaywright(dir, tmp, tl.total, size);
   }
-  const p = await finalize(tmp, out, size);
+  const { p, audio } = await finalize(tmp, out, size, sb.meta?.audio ? { sb, tl, src: run.src } : null);
+  for (const w of audio?.warnings || []) issues.push({ kind: w.kind, detail: w.detail });
   fs.rmSync(tmp, { force: true });
   let gif = { skipped: true, reason: "disabled with --no-gif" };
   if (args.gif !== false) gif = await makeGif(out, path.join(run.folder, run.layout.gif), p.duration);
@@ -301,6 +339,7 @@ async function main() {
       codec: p.codec,
       pixFmt: p.pixFmt,
       audio: p.audio,
+      audioLevels: audio ? { loudnessLufs: audio.loudnessLufs, truePeakDb: audio.truePeakDb } : null,
       size: fmtBytes(p.size),
       underLimit: p.size <= MAX_MB * 1024 * 1024,
     },

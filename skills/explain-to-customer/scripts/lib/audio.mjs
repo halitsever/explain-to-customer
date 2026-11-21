@@ -1,4 +1,6 @@
 /** Music bed and sound cues -> FFmpeg filter graph. Paths stay as given; the caller resolves them against _source. */
+import path from "node:path";
+import { exists, findFfmpeg, runStream, runSync } from "./common.mjs";
 
 const num = (v, d) => (Number.isFinite(Number(v)) && v !== null && v !== "" && v !== undefined ? Number(v) : d);
 const fmt = (n) => String(+Number(n).toFixed(3));
@@ -53,7 +55,7 @@ export function audioGraph(audio, cues, totalS) {
   let bus = null;
   if (labels.length) {
     bus = "[bus]";
-    parts.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0:duration=longest[bus]`);
+    parts.push(`${labels.join("")}amix=inputs=${labels.length}:normalize=0:duration=longest,apad=whole_dur=${fmt(totalS)}[bus]`);
   }
   let mixed;
   if (music && bus) {
@@ -67,4 +69,100 @@ export function audioGraph(audio, cues, totalS) {
   } else mixed = music || bus;
   parts.push(`${mixed}atrim=0:${fmt(totalS)},loudnorm=I=${num(a.loudness, -14)}:TP=-1:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]`);
   return { inputs, filter: parts.join(";"), map: "[aout]" };
+}
+
+/** Strip container metadata so no encoder or title tag leaks into the file. */
+export const CLEAN = ["-map_metadata", "-1", "-fflags", "+bitexact"];
+
+/** Integrated loudness and true peak of the first audio stream, or null without one. */
+export function measureLoudness(file) {
+  const r = runSync(findFfmpeg().ffmpeg, ["-hide_banner", "-nostats", "-i", file, "-map", "0:a:0", "-af", "ebur128=peak=true", "-f", "null", "-"], { timeout: 120000 });
+  if (r.code !== 0) return null;
+  return parseSummary(r.stderr);
+}
+
+function parseSummary(text) {
+  const tail = text.slice(text.lastIndexOf("Summary:"));
+  const lufs = /I:\s+(-?[\d.]+)\s+LUFS/.exec(tail);
+  const peak = /Peak:\s+(-?[\d.]+)\s+dBFS/.exec(tail);
+  if (!lufs) return null;
+  return { loudnessLufs: Number(lufs[1]), truePeakDb: peak ? Number(peak[1]) : null };
+}
+
+async function ffmpegRun(argv, label) {
+  const r = await runStream(findFfmpeg().ffmpeg, ["-hide_banner", "-loglevel", "info", "-y", ...argv], { quiet: true });
+  if (r.code !== 0) throw new Error(`ffmpeg ${label} failed: ${r.stderr.slice(-600)}`);
+  return r.stderr;
+}
+
+/** Mix music and cues into the video. Missing files become warnings; with nothing left the output is silent. */
+export async function mixAudio(videoIn, out, sb, tl, src) {
+  const audio = sb.meta?.audio || {};
+  const { cues, warnings } = resolveCues(sb, tl);
+  const abs = (p) => path.resolve(src, p);
+  const kept = [];
+  for (const c of cues) {
+    if (!c.sound || !exists(abs(c.sound))) warnings.push({ kind: "audio-missing", detail: `cue ${c.sound || "(no sound)"} at ${c.at}s` });
+    else kept.push(c);
+  }
+  let music = audio.music;
+  if (music && !exists(abs(music))) {
+    warnings.push({ kind: "audio-missing", detail: `music ${music}` });
+    music = null;
+  }
+  const g = audioGraph({ ...audio, music }, kept, tl.total);
+  if (!g.map) {
+    if (audio && Object.keys(audio).length) warnings.push({ kind: "audio-empty", detail: "no usable music or cues, output is silent" });
+    await ffmpegRun(["-i", videoIn, "-map", "0:v:0", "-c", "copy", "-an", ...CLEAN, "-movflags", "+faststart", out], "remux");
+    return { loudnessLufs: null, truePeakDb: null, warnings };
+  }
+  const inputs = g.inputs.flatMap((p) => ["-i", abs(p)]);
+  // loudnorm falls back to dynamic mode on peaky cues and misses the target, so set the gain by measurement.
+  const target = num(audio.loudness, -14);
+  const head = g.filter.replace(/loudnorm=[^,\[]*,/, "");
+  const i = head.lastIndexOf(";");
+  const mixLabel = head.slice(i + 1).split(",")[0];
+  const build = (gain, meter) => {
+    return `${head.slice(0, i + 1)}${mixLabel},volume=${gain.toFixed(2)}dB,alimiter=limit=0.794:level=0,aresample=48000,aformat=channel_layouts=stereo${meter ? ",ebur128=peak=true" : ""}[aout]`;
+  };
+  let gain = 0;
+  for (let pass = 0; pass < 4; pass++) {
+    const err = await ffmpegRun(["-i", videoIn, ...inputs, "-filter_complex", build(gain, true), "-map", g.map, "-f", "null", "-"], "loudness pass");
+    const m = parseSummary(err);
+    if (!m || !Number.isFinite(m.loudnessLufs)) break;
+    if (Math.abs(m.loudnessLufs - target) < 0.3) break;
+    gain += target - m.loudnessLufs;
+  }
+  const filter = build(gain, false);
+  await ffmpegRun(
+    [
+      "-i",
+      videoIn,
+      ...inputs,
+      "-filter_complex",
+      filter,
+      "-map",
+      "0:v:0",
+      "-map",
+      g.map,
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      "-shortest",
+      ...CLEAN,
+      "-movflags",
+      "+faststart",
+      out,
+    ],
+    "mix",
+  );
+  const m = measureLoudness(out);
+  return { loudnessLufs: m?.loudnessLufs ?? null, truePeakDb: m?.truePeakDb ?? null, warnings };
 }
