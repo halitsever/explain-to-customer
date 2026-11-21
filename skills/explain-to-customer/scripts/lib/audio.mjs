@@ -25,7 +25,7 @@ export function resolveCues(sb, tl) {
   return { cues, warnings };
 }
 
-/** Video is input 0, so audio inputs start at 1. Ducking ratio grows with duckDb (6 dB is about 4:1). */
+/** The graph ends at the un-normalised label in `map`; mixAudio adds gain, limiter and the 48 kHz stereo format. Video is input 0, so audio inputs start at 1. Ducking ratio grows with duckDb (6 dB is about 4:1). */
 export function audioGraph(audio, cues, totalS) {
   const a = audio || {};
   const inputs = [];
@@ -67,8 +67,8 @@ export function audioGraph(audio, cues, totalS) {
     );
     mixed = "[mix]";
   } else mixed = music || bus;
-  parts.push(`${mixed}atrim=0:${fmt(totalS)},loudnorm=I=${num(a.loudness, -14)}:TP=-1:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]`);
-  return { inputs, filter: parts.join(";"), map: "[aout]" };
+  parts.push(`${mixed}atrim=0:${fmt(totalS)}[pre]`);
+  return { inputs, filter: parts.join(";"), map: "[pre]" };
 }
 
 /** Strip container metadata so no encoder or title tag leaks into the file. */
@@ -87,6 +87,11 @@ function parseSummary(text) {
   const peak = /Peak:\s+(-?[\d.]+)\s+dBFS/.exec(tail);
   if (!lufs) return null;
   return { loudnessLufs: Number(lufs[1]), truePeakDb: peak ? Number(peak[1]) : null };
+}
+
+/** Stream copy with clean metadata. Re-encodes leave a stream-level encoder tag that only a remux drops. */
+export async function stripTags(src, dst) {
+  await ffmpegRun(["-i", src, "-map", "0", "-c", "copy", ...CLEAN, "-movflags", "+faststart", dst], "strip tags");
 }
 
 async function ffmpegRun(argv, label) {
@@ -119,15 +124,11 @@ export async function mixAudio(videoIn, out, sb, tl, src) {
   const inputs = g.inputs.flatMap((p) => ["-i", abs(p)]);
   // loudnorm falls back to dynamic mode on peaky cues and misses the target, so set the gain by measurement.
   const target = num(audio.loudness, -14);
-  const head = g.filter.replace(/loudnorm=[^,\[]*,/, "");
-  const i = head.lastIndexOf(";");
-  const mixLabel = head.slice(i + 1).split(",")[0];
-  const build = (gain, meter) => {
-    return `${head.slice(0, i + 1)}${mixLabel},volume=${gain.toFixed(2)}dB,alimiter=limit=0.794:level=0,aresample=48000,aformat=channel_layouts=stereo${meter ? ",ebur128=peak=true" : ""}[aout]`;
-  };
+  const build = (gain, meter) =>
+    `${g.filter};${g.map}volume=${gain.toFixed(2)}dB,alimiter=limit=0.794:level=0,aresample=48000,aformat=channel_layouts=stereo${meter ? ",ebur128=peak=true" : ""}[aout]`;
   let gain = 0;
   for (let pass = 0; pass < 4; pass++) {
-    const err = await ffmpegRun(["-i", videoIn, ...inputs, "-filter_complex", build(gain, true), "-map", g.map, "-f", "null", "-"], "loudness pass");
+    const err = await ffmpegRun(["-i", videoIn, ...inputs, "-filter_complex", build(gain, true), "-map", "[aout]", "-f", "null", "-"], "loudness pass");
     const m = parseSummary(err);
     if (!m || !Number.isFinite(m.loudnessLufs)) break;
     if (Math.abs(m.loudnessLufs - target) < 0.3) break;
@@ -144,7 +145,7 @@ export async function mixAudio(videoIn, out, sb, tl, src) {
       "-map",
       "0:v:0",
       "-map",
-      g.map,
+      "[aout]",
       "-c:v",
       "copy",
       "-c:a",

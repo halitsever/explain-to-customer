@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs, loadRun, exists, die, log, fmtBytes, readJson, WS, SKILL_DIR, renderEnv, runStream, runSync, findFfmpeg, launchChromium } from "./lib/common.mjs";
-import { mixAudio, CLEAN } from "./lib/audio.mjs";
+import { mixAudio, stripTags, CLEAN } from "./lib/audio.mjs";
 import { formatOf } from "./lib/format.mjs";
 import { buildScenes, timeline, sectionOf, fillComposition } from "./lib/scenes.mjs";
 import { bakeScenes } from "./lib/stills.mjs";
@@ -181,6 +181,7 @@ async function finalize(tmp, out, size, mix) {
   let p = probe(tmp);
   if (!p) throw new Error("ffprobe could not read the render");
   // The mix reads the silent video, then writes the final file.
+  const enc = `${tmp}.enc.mp4`;
   const video = mix ? `${tmp}.silent.mp4` : out;
   const compliant = p.codec === "h264" && p.pixFmt === "yuv420p" && p.width === size.width && p.height === size.height && Math.abs(p.fps - FPS) < 0.01;
   if (compliant) {
@@ -211,10 +212,12 @@ async function finalize(tmp, out, size, mix) {
         ...CLEAN,
         "-movflags",
         "+faststart",
-        video,
+        enc,
       ],
       "transcode",
     );
+    await stripTags(enc, video);
+    fs.rmSync(enc, { force: true });
   }
   let audio = null;
   if (mix) {
@@ -256,7 +259,8 @@ async function finalize(tmp, out, size, mix) {
       ],
       "shrink",
     );
-    fs.renameSync(shrunk, out);
+    await stripTags(shrunk, out);
+    fs.rmSync(shrunk, { force: true });
   }
   return { p: probe(out), audio };
 }

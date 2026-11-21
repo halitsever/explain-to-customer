@@ -33,15 +33,19 @@ test("scene sfx resolve against scene start", () => {
   const { cues } = resolveCues({ meta: {}, scenes: [scene] }, { list: [{ scene, start: 4, duration: 3 }], total: 7 });
   assert.deepEqual(cues, [{ at: 4.5, sound: "s.wav", gainDb: -8 }]);
 });
-test("ends in loudnorm at the requested loudness", () =>
-  assert.match(audioGraph({ music: "m.mp3", loudness: -14 }, [], 10).filter, /loudnorm=I=-14:TP=-1:LRA=11,aresample=48000,aformat=channel_layouts=stereo/));
+test("ends at the pre-normalisation label with no loudnorm", () => {
+  const g = audioGraph({ music: "m.mp3", loudness: -14 }, [], 10);
+  assert.equal(g.map, "[pre]");
+  assert.match(g.filter, /atrim=0:10\[pre\]$/);
+  assert.doesNotMatch(g.filter, /loudnorm|aresample|aformat/);
+});
+test("pads the cue bus to the full length", () => assert.match(audioGraph({}, [{ at: 1, sound: "a.wav" }], 10).filter, /apad=whole_dur=10\[bus\]/));
 test("applies defaults", () => {
   const g = audioGraph({ music: "m.mp3" }, [{ at: 1, sound: "w.wav" }], 20);
   assert.match(g.filter, /volume=-16dB/);
   assert.match(g.filter, /afade=t=in:st=0:d=0\.6/);
   assert.match(g.filter, /afade=t=out:st=18\.2:d=1\.8/);
   assert.match(g.filter, /volume=0dB/);
-  assert.match(g.filter, /loudnorm=I=-14:/);
 });
 test("inputs start after the video input and map the final label", () => {
   const g = audioGraph(
@@ -57,8 +61,8 @@ test("inputs start after the video input and map the final label", () => {
   assert.match(g.filter, /\[2:a\]adelay=1000/);
   assert.match(g.filter, /\[3:a\]adelay=2000/);
   assert.match(g.filter, /sidechaincompress/);
-  assert.equal(g.map, "[aout]");
-  assert.match(g.filter, /\[aout\]$/);
+  assert.equal(g.map, "[pre]");
+  assert.match(g.filter, /\[pre\]$/);
 });
 test("music only has no ducking, cues only has no music chain", () => {
   assert.doesNotMatch(audioGraph({ music: "m.mp3" }, [], 10).filter, /sidechaincompress/);

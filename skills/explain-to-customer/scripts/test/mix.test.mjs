@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { mixAudio, measureLoudness } from "../lib/audio.mjs";
+import { mixAudio, measureLoudness, stripTags } from "../lib/audio.mjs";
 import { findFfmpeg, runSync } from "../lib/common.mjs";
 
 const ff = findFfmpeg();
@@ -46,4 +46,23 @@ test("drops missing files with a warning and falls back to silence", { skip: !ff
   assert.equal(r.warnings.filter((w) => w.kind === "audio-missing").length, 3);
   assert.equal(r.loudnessLufs, null);
   assert.equal(probe(out).streams.filter((s) => s.codec_type === "audio").length, 0);
+});
+
+test("a re-encoded video has no stream-level encoder tag after stripTags", { skip: !ff.ffmpeg || !ff.ffprobe }, async () => {
+  const dir = fixture(2);
+  const enc = path.join(dir, "enc.mp4");
+  gen("-i", path.join(dir, "v.mp4"), "-c:v", "libx264", "-crf", "28", enc);
+  const tagsOf = (f) => probe(f).streams.flatMap((s) => Object.keys(s.tags || {}));
+  assert.ok(tagsOf(enc).includes("encoder"), "fixture should carry the tag");
+  const out = path.join(dir, "clean.mp4");
+  await stripTags(enc, out);
+  for (const k of ["encoder", "title", "comment"]) assert.ok(!tagsOf(out).includes(k), k);
+});
+
+test("the mixed output has no stream-level tags either", { skip: !ff.ffmpeg || !ff.ffprobe }, async () => {
+  const dir = fixture(6);
+  const out = path.join(dir, "out.mp4");
+  await mixAudio(path.join(dir, "v.mp4"), out, sbOf({ music: "m.mp3" }), tlOf(6), dir);
+  const tags = probe(out).streams.flatMap((s) => Object.keys(s.tags || {}));
+  for (const k of ["encoder", "title", "comment"]) assert.ok(!tags.includes(k), k);
 });

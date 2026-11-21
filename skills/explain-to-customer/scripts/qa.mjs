@@ -117,6 +117,8 @@ function probe(file) {
   if (r.code !== 0) return null;
   const j = JSON.parse(r.stdout);
   const tags = j.format?.tags || {};
+  const streamTags = j.streams.flatMap((st) => Object.keys(st.tags || {}));
+  const bad = (t) => ["title", "comment", "encoder"].includes(t.toLowerCase());
   const v = j.streams.find((s) => s.codec_type === "video");
   const [n, d] = String(v?.r_frame_rate || "0/1")
     .split("/")
@@ -130,7 +132,7 @@ function probe(file) {
     duration: Number(j.format?.duration || 0),
     size: Number(j.format?.size || fs.statSync(file).size),
     audio: j.streams.some((s) => s.codec_type === "audio"),
-    tags: ["title", "comment", "encoder"].filter((k) => Object.keys(tags).some((t) => t.toLowerCase() === k)),
+    tags: [...new Set([...Object.keys(tags), ...streamTags].filter(bad).map((t) => t.toLowerCase()))],
   };
 }
 
