@@ -46,14 +46,17 @@
       if (max && el.scrollHeight > lh * max + lh * 0.35) return true;
       return el.scrollWidth > el.clientWidth + 2;
     }
+    /** Checks a 5% margin of the viewport, the output frame, so a stage wider than the frame still counts. */
     function sceneOverflow() {
-      var r = scene.getBoundingClientRect();
-      var limit = r.top + r.height - 54;
+      var w = document.documentElement.clientWidth;
+      var h = document.documentElement.clientHeight;
+      var bottom = h - h * 0.05;
+      var right = w - w * 0.05;
       var worst = 0;
       scene.querySelectorAll(".h-title,.h-scene,.lead,.text,.text-sm,.card,.step,.benefit,li,img").forEach(function (n) {
         var b = n.getBoundingClientRect();
-        if (b.bottom > limit) worst = Math.max(worst, b.bottom - limit);
-        if (b.right > r.right - 96 + 1) worst = Math.max(worst, b.right - (r.right - 96));
+        if (b.bottom > bottom) worst = Math.max(worst, b.bottom - bottom);
+        if (b.right > right + 1) worst = Math.max(worst, b.right - right);
       });
       return worst;
     }
