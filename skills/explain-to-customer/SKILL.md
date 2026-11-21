@@ -65,7 +65,7 @@ Look only at the diffstat and file types now, just enough to recommend a format:
 Write question and option text in the user's conversation language; the English here is the canonical meaning. Headers stay as given (≤ 12 chars). Keep the option order fixed. Add "(last used)" to the description of the user's previous answer from PRE `lastUsed`. Skip any question the arguments answered.
 
 1. `Format`: "What should I create for the customer?"
-   - `Video`: short MP4 (30–60 s, 16:9 and silent by default) with animated captions; best for visible UI changes. `meta.aspect`, `meta.audio` and `meta.sceneDir` are opt-in storyboard settings, see `reference/video.md`
+   - `Video`: short MP4 (30–60 s) with animated captions; best for visible UI changes
    - `Image`: 3–5 PNG slides including a one-page summary card; easy to paste into email or WhatsApp
    - `Diagram (Mermaid)`: flow/sequence diagrams as SVG + PNG + editable `.mmd`
    - `All`: everything above in one consistent style
@@ -86,6 +86,8 @@ Write question and option text in the user's conversation language; the English 
 Without AskUserQuestion (non-interactive run) use the defaults: recommended format, project folder, Match my project, and screenshots only when PRE `devServer.recommendedUrl` responds or the project is a static site (capture.mjs serves the folder itself). List these assumptions in the final report.
 
 Then save the answers: `node "${CLAUDE_SKILL_DIR}/scripts/preflight.mjs" --remember '{"format":"…","saveTo":"…","style":"…","screenshots":"…"}'`.
+
+Video is 16:9 and silent unless the user asks for another frame, sound or their own scene templates; see `reference/video.md`.
 
 ## Step 4: Brief, storyboard, approval
 

@@ -11,8 +11,12 @@ const ff = findFfmpeg();
 const gen = (...a) => assert.equal(runSync(ff.ffmpeg, ["-v", "error", "-y", ...a], { timeout: 60000 }).code, 0);
 const probe = (f) => JSON.parse(runSync(ff.ffprobe, ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", f]).stdout);
 
+const dirs = [];
+test.after(() => dirs.forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
+
 function fixture(dur) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mix-"));
+  dirs.push(dir);
   gen("-f", "lavfi", "-i", `testsrc2=s=1080x1350:r=30:d=${dur}`, "-c:v", "libx264", "-pix_fmt", "yuv420p", path.join(dir, "v.mp4"));
   gen("-f", "lavfi", "-i", "sine=frequency=440:duration=2", path.join(dir, "m.mp3"));
   gen("-f", "lavfi", "-i", "anoisesrc=d=0.2:c=white", path.join(dir, "c.wav"));
@@ -65,4 +69,17 @@ test("the mixed output has no stream-level tags either", { skip: !ff.ffmpeg || !
   await mixAudio(path.join(dir, "v.mp4"), out, sbOf({ music: "m.mp3" }), tlOf(6), dir);
   const tags = probe(out).streams.flatMap((s) => Object.keys(s.tags || {}));
   for (const k of ["encoder", "title", "comment"]) assert.ok(!tags.includes(k), k);
+});
+
+test("an undecodable music file falls back to a silent video with a warning", { skip: !ff.ffmpeg || !ff.ffprobe }, async () => {
+  const dir = fixture(4);
+  fs.writeFileSync(path.join(dir, "bad.mp3"), "this is not audio");
+  const out = path.join(dir, "out.mp4");
+  const r = await mixAudio(path.join(dir, "v.mp4"), out, sbOf({ music: "bad.mp3" }), tlOf(4), dir);
+  assert.deepEqual(
+    r.warnings.map((w) => w.kind),
+    ["audio-failed"],
+  );
+  assert.equal(r.loudnessLufs, null);
+  assert.equal(probe(out).streams.filter((s) => s.codec_type === "audio").length, 0);
 });

@@ -84,16 +84,19 @@ export function video(src, p, attrs = "", start = 0) {
   return `<video src="../${escapeHtml(a.rel)}" ${base} ${attrs}></video>`;
 }
 
+/** meta.sceneDir when it is an absolute path; a relative one would resolve against an unknown cwd. */
+const sceneDirOf = (sb) => (path.isAbsolute(sb.meta?.sceneDir || "") ? sb.meta.sceneDir : null);
+
 /** External templates in meta.sceneDir, used only for types that are not built in. */
 const externalTemplate = (sb, type) => {
-  const dir = sb.meta?.sceneDir;
-  const file = dir && !BUILT_IN.includes(type) ? path.join(dir, `${type}.html`) : null;
+  const dir = sceneDirOf(sb);
+  const file = dir && !BUILT_IN.includes(type) && /^[\w-]+$/.test(String(type)) ? path.join(dir, `${type}.html`) : null;
   return file && exists(file) ? fs.readFileSync(file, "utf8") : null;
 };
 
 /** Scene CSS from meta.sceneDir as names inside lib/. A name that clashes with a runtime file gets a prefix. */
 export function sceneCss(sb) {
-  const dir = sb.meta?.sceneDir;
+  const dir = sceneDirOf(sb);
   if (!dir || !exists(dir)) return [];
   return fs
     .readdirSync(dir)
@@ -278,12 +281,13 @@ export function buildScenes(src, { force = false } = {}) {
   const wanted = new Set();
   const out = [];
   const warnings = [];
+  if (sb.meta?.sceneDir && !sceneDirOf(sb)) warnings.push({ kind: "scene-dir-relative", detail: `meta.sceneDir "${sb.meta.sceneDir}" must be an absolute path, so it is ignored` });
   sb.scenes.forEach((scene, i) => {
     const file = sceneFileName(i, scene);
     wanted.add(file);
     const p = path.join(dir, file);
     const keep = exists(p) && /<section[^>]*\sdata-keep/.test(fs.readFileSync(p, "utf8"));
-    const ext = sb.meta?.sceneDir && !BUILT_IN.includes(scene.type) ? path.join(sb.meta.sceneDir, `${scene.type}.html`) : null;
+    const ext = sceneDirOf(sb) && !BUILT_IN.includes(scene.type) && /^[\w-]+$/.test(String(scene.type)) ? path.join(sceneDirOf(sb), `${scene.type}.html`) : null;
     // An edited external template counts as a storyboard change for its scenes.
     const since = Math.max(sbTime, ext && exists(ext) ? fs.statSync(ext).mtimeMs : 0);
     const stale = !exists(p) || fs.statSync(p).mtimeMs < since;

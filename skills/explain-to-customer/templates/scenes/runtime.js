@@ -201,14 +201,16 @@
             return im.getAttribute("src");
           });
         if (broken.length) issues.push({ kind: "missing-image", src: broken });
-        var clips = Array.prototype.filter
-          .call(document.querySelectorAll("video"), function (v) {
-            return v.error || v.readyState < 2;
-          })
-          .map(function (v) {
-            return v.getAttribute("src");
+        Array.prototype.forEach.call(document.querySelectorAll("video"), function (v) {
+          if (!v.error && v.readyState >= 2) return;
+          var src = v.getAttribute("src");
+          var gone = v.hasAttribute("data-missing");
+          issues.push({
+            kind: "asset-missing",
+            src: [src],
+            detail: gone ? src + " is missing" : src + " exists but Chromium could not decode it (HyperFrames may still render it)",
           });
-        if (clips.length) issues.push({ kind: "asset-missing", src: clips });
+        });
         return fontReport().then(function (fonts) {
           return { fonts: fonts, issues: issues };
         });

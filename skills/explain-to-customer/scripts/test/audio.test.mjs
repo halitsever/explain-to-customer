@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { audioGraph, resolveCues } from "../lib/audio.mjs";
 
 test("loops short music", () => assert.match(audioGraph({ music: "m.mp3" }, [], 30).filter, /aloop=loop=-1.*atrim=0:30/));
-test("delays cues to their time", () => assert.match(audioGraph({}, [{ at: 1.25, sound: "w.wav", gainDb: -6 }], 10).filter, /adelay=1250\|1250/));
+test("delays cues to their time", () => assert.match(audioGraph({}, [{ at: 1.25, sound: "w.wav", gainDb: -6 }], 10).filter, /adelay=1250:all=1/));
 test("drops out-of-range cues", () => {
   const { cues, warnings } = resolveCues(
     {

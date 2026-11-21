@@ -71,7 +71,9 @@ function lintStoryboard(sb) {
     const where = `scene ${i + 1} (${sc.id})`;
     const texts = [
       ...(sc.onScreenText || []),
-      ...Object.values(sc.data || {}).flatMap((v) => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).filter((x) => typeof x === "string") : [])),
+      ...Object.entries(sc.data || {})
+        .filter(([k]) => !/(Video|Image)$/.test(k))
+        .flatMap(([, v]) => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).filter((x) => typeof x === "string") : [])),
     ];
     for (const t of texts) lintText(where, t, { onScreen: true, technical });
     for (const t of sc.onScreenText || []) {
@@ -274,15 +276,17 @@ async function main() {
       if (!p.audio) warn("video", "meta.audio is set but the video has no audio track");
       else {
         const m = measureLoudness(mp4);
+        const target =
+          Number.isFinite(Number(sb?.meta?.audio?.loudness)) && sb.meta.audio.loudness !== null && sb.meta.audio.loudness !== "" ? Number(sb.meta.audio.loudness) : -14;
         report.checks.audio = m;
         if (!m) err("video", "could not measure the audio loudness");
         else {
-          if (Math.abs(m.loudnessLufs + 14) > 1) err("video", `loudness ${m.loudnessLufs} LUFS, expected -14 +/- 1`);
+          if (Math.abs(m.loudnessLufs - target) > 1) err("video", `loudness ${m.loudnessLufs} LUFS, expected ${target} +/- 1`);
           if (m.truePeakDb !== null && m.truePeakDb > -1) err("video", `true peak ${m.truePeakDb} dBTP is above -1`);
         }
       }
     } else if (p.audio) err("video", "has an audio track; expected none");
-    for (const t of p.tags) err("video", `container has a ${t} tag; expected none`);
+    for (const t of p.tags) err("video", `container has ${/^[aeiou]/.test(t) ? "an" : "a"} ${t} tag; expected none`);
     if (!fast) err("video", "moov atom is not at the start (missing +faststart)");
     if (p.size > 25 * 1024 * 1024) warn("video", `${fmtBytes(p.size)} is over the 25 MB email limit`);
     if (p.duration > 90) err("video", `${p.duration.toFixed(1)} s is over the 90 s maximum`);

@@ -13,6 +13,7 @@ import { parseArgs, WS, readJson, writeJson, exists, mkdirp, runStream, IS_WIN, 
 
 const args = parseArgs();
 
+// Clip scenes stamp video timing that `hyperframes lint` flags as video_nested_in_timed_element; re-check clip renders after a bump.
 const PINNED = {
   hyperframes: "0.8.225",
   playwright: "1.64.1",

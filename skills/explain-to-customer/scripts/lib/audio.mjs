@@ -47,7 +47,7 @@ export function audioGraph(audio, cues, totalS) {
   cues.forEach((c, i) => {
     inputs.push(c.sound);
     const ms = Math.round(c.at * 1000);
-    parts.push(`[${idx()}:a]adelay=${ms}|${ms},volume=${num(c.gainDb, 0)}dB[c${i}]`);
+    parts.push(`[${idx()}:a]adelay=${ms}:all=1,volume=${num(c.gainDb, 0)}dB[c${i}]`);
     labels.push(`[c${i}]`);
   });
   if (!inputs.length) return { inputs: [], filter: "", map: null };
@@ -100,8 +100,19 @@ async function ffmpegRun(argv, label) {
   return r.stderr;
 }
 
-/** Mix music and cues into the video. Missing files become warnings; with nothing left the output is silent. */
+/** Mix music and cues into the video. Missing or undecodable audio becomes a warning and the output stays silent. */
 export async function mixAudio(videoIn, out, sb, tl, src) {
+  try {
+    return await mix(videoIn, out, sb, tl, src);
+  } catch (e) {
+    await silentRemux(videoIn, out);
+    return { loudnessLufs: null, truePeakDb: null, warnings: [{ kind: "audio-failed", detail: String(e.message).split("\n")[0].slice(0, 300) }] };
+  }
+}
+
+const silentRemux = (videoIn, out) => ffmpegRun(["-i", videoIn, "-map", "0:v:0", "-c", "copy", "-an", ...CLEAN, "-movflags", "+faststart", out], "remux");
+
+async function mix(videoIn, out, sb, tl, src) {
   const audio = sb.meta?.audio || {};
   const { cues, warnings } = resolveCues(sb, tl);
   const abs = (p) => path.resolve(src, p);
@@ -118,7 +129,7 @@ export async function mixAudio(videoIn, out, sb, tl, src) {
   const g = audioGraph({ ...audio, music }, kept, tl.total);
   if (!g.map) {
     if (audio && Object.keys(audio).length) warnings.push({ kind: "audio-empty", detail: "no usable music or cues, output is silent" });
-    await ffmpegRun(["-i", videoIn, "-map", "0:v:0", "-c", "copy", "-an", ...CLEAN, "-movflags", "+faststart", out], "remux");
+    await silentRemux(videoIn, out);
     return { loudnessLufs: null, truePeakDb: null, warnings };
   }
   const inputs = g.inputs.flatMap((p) => ["-i", abs(p)]);

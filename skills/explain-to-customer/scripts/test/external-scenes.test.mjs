@@ -61,6 +61,28 @@ test("an unknown type with no template names sceneDir in the error", { skip }, (
   assert.throws(() => buildScenes(src, { force: true }), /Unknown scene type "nope".*sceneDir/s);
 });
 
+test("a type that is not a plain name never reads a file", { skip }, () => {
+  const { src, root } = fixture([{ id: "x", type: "../secret" }]);
+  fs.writeFileSync(path.join(root, "secret.html"), "<section>LEAK</section>");
+  assert.throws(() => buildScenes(src, { force: true }), /Unknown scene type "\.\.\/secret"/);
+});
+
+test("a relative sceneDir is ignored with a warning", { skip }, () => {
+  const { src, sceneDir } = fixture([{ id: "hook", type: "hook", onScreenText: ["Hi"] }]);
+  const sbPath = path.join(src, "storyboard.json");
+  const sb = JSON.parse(fs.readFileSync(sbPath, "utf8"));
+  sb.meta.sceneDir = path.relative(process.cwd(), sceneDir);
+  fs.writeFileSync(sbPath, JSON.stringify(sb));
+  assert.throws(() => buildScenes(src, { force: true }), /Unknown scene type "hook"/);
+  sb.scenes = [{ id: "t", type: "title", onScreenText: ["Hello"] }];
+  fs.writeFileSync(sbPath, JSON.stringify(sb));
+  const { warnings } = buildScenes(src, { force: true });
+  assert.ok(
+    warnings.some((w) => w.kind === "scene-dir-relative"),
+    JSON.stringify(warnings),
+  );
+});
+
 test("a placeholder with no value raises template-missing-key", { skip }, () => {
   const { src } = fixture([{ id: "hook", type: "hook", onScreenText: ["Hi"] }]);
   const { warnings } = buildScenes(src, { force: true });
@@ -100,6 +122,7 @@ test("missing clip raises asset-missing", { skip, timeout: 120000 }, async () =>
   const hit = report.issues.find((i) => i.kind === "asset-missing");
   assert.ok(hit, JSON.stringify(report.issues));
   assert.match(JSON.stringify(hit), /gone\.mp4/);
+  assert.match(hit.detail, /missing/);
 });
 
 test("an edited template rebuilds its scenes without --force", { skip }, () => {

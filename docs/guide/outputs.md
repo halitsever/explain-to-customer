@@ -37,7 +37,7 @@ clearer-error-messages-on-sign-up/
 
 ## Slides
 
-Three to five PNGs at 3840×2160. The first one, `01-summary.png`, works on its own: title, three points, a screenshot or a before and after, and what the client needs to do.
+Three to five PNGs at 3840×2160 (sizes at 2x). Slides and diagrams follow `meta.aspect`. The first one, `01-summary.png`, works on its own: title, three points, a screenshot or a before and after, and what the client needs to do.
 
 ![Summary slide](/media/slides/summary.webp)
 
