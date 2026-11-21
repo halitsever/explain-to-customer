@@ -39,10 +39,20 @@
       el.style.fontSize = "";
       el.style.fontSize = parseFloat(getComputedStyle(el).fontSize) + "px";
     });
+    // Portrait frames are about half as wide, so a social-length heading gets 3 lines and the 64px heading floor.
+    var portrait = /^(4-5|9-16)$/.test(document.documentElement.getAttribute("data-format") || "");
+    function portraitHeading(el) {
+      return portrait && el.matches(".h-title, .h-scene");
+    }
+    function minOf(el) {
+      var min = parseFloat(el.getAttribute("data-min")) || 36;
+      return portraitHeading(el) ? Math.min(min, 64) : min;
+    }
     function overflowing(el) {
       var cs = getComputedStyle(el);
       var lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
       var max = parseInt(el.getAttribute("data-max-lines") || "0", 10);
+      if (max && portraitHeading(el)) max = Math.max(max, 3);
       if (max && el.scrollHeight > lh * max + lh * 0.35) return true;
       return el.scrollWidth > el.clientWidth + 2;
     }
@@ -60,24 +70,28 @@
       });
       return worst;
     }
+    /** The last step lands on the minimum instead of stopping one step above it. */
+    function step(size, min) {
+      return Math.max(size * 0.96, min).toFixed(1) + "px";
+    }
     for (var round = 0; round < 14; round++) {
       var changed = false;
       items.forEach(function (el) {
-        var min = parseFloat(el.getAttribute("data-min")) || 36;
+        var min = minOf(el);
         if (overflowing(el)) {
           var size = parseFloat(el.style.fontSize);
-          if (size * 0.96 >= min) {
-            el.style.fontSize = (size * 0.96).toFixed(1) + "px";
+          if (size > min) {
+            el.style.fontSize = step(size, min);
             changed = true;
           }
         }
       });
       if (sceneOverflow() > 0) {
         items.forEach(function (el) {
-          var min = parseFloat(el.getAttribute("data-min")) || 36;
+          var min = minOf(el);
           var size = parseFloat(el.style.fontSize);
-          if (size * 0.96 >= min) {
-            el.style.fontSize = (size * 0.96).toFixed(1) + "px";
+          if (size > min) {
+            el.style.fontSize = step(size, min);
             changed = true;
           }
         });

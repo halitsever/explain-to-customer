@@ -48,14 +48,14 @@ async function bake(aspect, scenes) {
 }
 
 const skip = fs.existsSync(WS) ? false : "needs the tool workspace (node scripts/setup.mjs)";
-const safeArea = (reports) => reports.flatMap((r) => r.issues.filter((i) => i.kind === "safe-area").map((i) => `${r.file}: ${i.px}px`));
+const layoutIssues = (reports) => reports.flatMap((r) => r.issues.filter((i) => i.kind === "safe-area" || i.kind === "text-overflow").map((i) => `${r.file}: ${i.kind}`));
 
 for (const aspect of ["4:5", "9:16"]) {
-  test(`portrait bake keeps every scene type inside the safe area (${aspect})`, { skip, timeout: 120000 }, async () => {
+  test(`portrait bake fits a 90-character heading on every scene type (${aspect})`, { skip, timeout: 120000 }, async () => {
     assert.equal(HEADING.length, 90);
     const reports = await bake(aspect, allScenes());
     assert.equal(reports.length, 9);
-    assert.deepEqual(safeArea(reports), []);
+    assert.deepEqual(layoutIssues(reports), []);
   });
 }
 

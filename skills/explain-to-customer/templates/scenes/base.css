@@ -578,6 +578,9 @@ code,
 :is([data-format="4-5"], [data-format="9-16"]) :is(.h-title, .h-scene, .lead, .actions) {
   max-width: 100%;
 }
+:is([data-format="4-5"], [data-format="9-16"]) .h-title {
+  font-size: max(72px, calc(96px * var(--type-scale)));
+}
 :is([data-format="4-5"], [data-format="9-16"]) .ba {
   flex: none;
   grid-template-columns: 1fr;
