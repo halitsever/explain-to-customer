@@ -28,7 +28,7 @@ A Claude Code skill that turns a code change, commit range or pull request into 
 
 You finish a change, run `/explain-to-customer`, answer four quick questions and get a folder you can send to the client:
 
-- a 30–60 s MP4 with burned-in captions (1920×1080, H.264, small enough for email), plus a poster image and a GIF preview
+- a 30–60 s MP4 with burned-in captions (1920×1080 by default, 4:5 and 9:16 on request, H.264, small enough for email), silent unless you add music and sound cues, plus a poster image and a GIF preview
 - 3–5 PNG slides, including a one-page summary card that works on its own in WhatsApp or email
 - Mermaid diagrams as SVG and PNG, with the editable `.mmd` source
 - a short message in the customer's language, ready to paste

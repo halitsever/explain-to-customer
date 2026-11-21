@@ -65,7 +65,7 @@ Look only at the diffstat and file types now, just enough to recommend a format:
 Write question and option text in the user's conversation language; the English here is the canonical meaning. Headers stay as given (≤ 12 chars). Keep the option order fixed. Add "(last used)" to the description of the user's previous answer from PRE `lastUsed`. Skip any question the arguments answered.
 
 1. `Format`: "What should I create for the customer?"
-   - `Video`: short MP4 (30–60 s) with animated captions; best for visible UI changes
+   - `Video`: short MP4 (30–60 s, 16:9 and silent by default) with animated captions; best for visible UI changes. `meta.aspect`, `meta.audio` and `meta.sceneDir` are opt-in storyboard settings, see `reference/video.md`
    - `Image`: 3–5 PNG slides including a one-page summary card; easy to paste into email or WhatsApp
    - `Diagram (Mermaid)`: flow/sequence diagrams as SVG + PNG + editable `.mmd`
    - `All`: everything above in one consistent style

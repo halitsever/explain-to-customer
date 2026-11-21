@@ -50,7 +50,7 @@ Check every on-screen string and the message before rendering:
 
 - 30–60 s, hard maximum 90 s; 4–7 scenes. A one-line fix can be 20 s.
 - Each caption line ≤ 12 words, at most 2 lines per text block, on screen ≥ 2.5 s, about 3 words per second plus a second to look at the visual.
-- Silent video: the on-screen text is the narration. No audio, no flashing.
+- Silent video by default: the on-screen text is the narration. Add audio only when the user asks for it. No flashing.
 - Templates enforce headings ≥ 64 px, body ≥ 36 px, 5 % safe margins and AA contrast.
 - Typical arc: Title → Before (the problem) → After (the change, real UI when available) → How it works (diagram) → How to use (steps) → What you need to do → Outro. Drop scenes that add nothing.
 
