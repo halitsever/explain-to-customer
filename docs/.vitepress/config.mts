@@ -15,6 +15,8 @@ export default defineConfig({
   sitemap: { hostname: site },
   markdown: { theme: { light: "vitesse-light", dark: "vitesse-dark" } },
   head: [
+    /** Cloudflare Web Analytics, one token for every page on halitsever.github.io. */
+    ["script", { defer: "", src: "https://static.cloudflareinsights.com/beacon.min.js", "data-cf-beacon": '{"token": "dd7e54d3f48841c187d72d9dbb92a6b6"}' }],
     ["link", { rel: "icon", type: "image/svg+xml", href: `${base}brand/logo-mark-dark.svg` }],
     ["link", { rel: "apple-touch-icon", href: `${base}brand/avatar-512.png` }],
     ["meta", { name: "theme-color", content: "#1F1D1A" }],
