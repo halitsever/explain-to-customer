@@ -6,18 +6,18 @@ Install with `npx skills add halitsever/explain-to-customer -g -a claude-code`, 
 
 ## Docs
 
-- [Getting started](https://halitsever.github.io/explain-to-customer/guide/getting-started): requirements and install with the skills CLI or git
-- [How to install a Claude Code skill](https://halitsever.github.io/explain-to-customer/guide/install-claude-code-skill): where Claude Code looks for skills, the skills CLI and manual install, and how a skill is started
-- [Usage](https://halitsever.github.io/explain-to-customer/guide/usage): arguments for scope, format, style, output folder, language and audience
-- [Outputs](https://halitsever.github.io/explain-to-customer/guide/outputs): the folder one run produces
-- [Styles](https://halitsever.github.io/explain-to-customer/guide/styles): the 21 styles and Match my project
-- [How it works](https://halitsever.github.io/explain-to-customer/guide/how-it-works): preflight, storyboard, approval, render and QA
-- [Privacy and honesty](https://halitsever.github.io/explain-to-customer/guide/privacy): what never goes on screen and how secrets are scanned for
-- [Troubleshooting](https://halitsever.github.io/explain-to-customer/guide/troubleshooting): skill not found, FFmpeg, macOS permissions, fonts
+- [Getting started](https://projects.halit.org/explain-to-customer/guide/getting-started): requirements and install with the skills CLI or git
+- [How to install a Claude Code skill](https://projects.halit.org/explain-to-customer/guide/install-claude-code-skill): where Claude Code looks for skills, the skills CLI and manual install, and how a skill is started
+- [Usage](https://projects.halit.org/explain-to-customer/guide/usage): arguments for scope, format, style, output folder, language and audience
+- [Outputs](https://projects.halit.org/explain-to-customer/guide/outputs): the folder one run produces
+- [Styles](https://projects.halit.org/explain-to-customer/guide/styles): the 21 styles and Match my project
+- [How it works](https://projects.halit.org/explain-to-customer/guide/how-it-works): preflight, storyboard, approval, render and QA
+- [Privacy and honesty](https://projects.halit.org/explain-to-customer/guide/privacy): what never goes on screen and how secrets are scanned for
+- [Troubleshooting](https://projects.halit.org/explain-to-customer/guide/troubleshooting): skill not found, FFmpeg, macOS permissions, fonts
 
 ## Optional
 
-- [Website](https://halitsever.github.io/explain-to-customer/): overview with example outputs
+- [Website](https://projects.halit.org/explain-to-customer/): overview with example outputs
 - [SKILL.md](https://github.com/halitsever/explain-to-customer/blob/main/skills/explain-to-customer/SKILL.md): the skill's instructions as Claude Code loads them
 - [Source](https://github.com/halitsever/explain-to-customer): repository
 - [skills.sh listing](https://www.skills.sh/halitsever/explain-to-customer/explain-to-customer): directory page

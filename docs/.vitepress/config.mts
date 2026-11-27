@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress";
 
 const base = "/explain-to-customer/";
-const site = "https://halitsever.github.io/explain-to-customer/";
+const site = "https://projects.halit.org/explain-to-customer/";
 const description = "A Claude Code skill that turns a code change into a short explainer video, slides and diagrams your client understands.";
 
 export default defineConfig({
@@ -17,7 +17,7 @@ export default defineConfig({
   sitemap: { hostname: site },
   markdown: { theme: { light: "vitesse-light", dark: "vitesse-dark" } },
   head: [
-    /** Cloudflare Web Analytics, one token for every page on halitsever.github.io. */
+    /** Cloudflare Web Analytics, one token for every page on projects.halit.org. */
     ["script", { defer: "", src: "https://static.cloudflareinsights.com/beacon.min.js", "data-cf-beacon": '{"token": "dd7e54d3f48841c187d72d9dbb92a6b6"}' }],
     ["link", { rel: "icon", type: "image/svg+xml", href: `${base}brand/logo-mark-dark.svg` }],
     ["link", { rel: "apple-touch-icon", href: `${base}brand/avatar-512.png` }],

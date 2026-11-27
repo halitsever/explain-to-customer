@@ -31,5 +31,5 @@ No CI runs on pull requests. Only the Pages deploy runs, on `main`. Before pushi
 
 ## Docs site
 
-- The VitePress site lives in `docs/` and deploys to https://halitsever.github.io/explain-to-customer/ from `.github/workflows/deploy-docs.yml` on pushes to `main` that touch `docs/`, the root package files, the styles or that workflow.
+- The VitePress site lives in `docs/` and deploys to https://projects.halit.org/explain-to-customer/ from `.github/workflows/deploy-docs.yml` on pushes to `main` that touch `docs/`, the root package files, the styles or that workflow.
 - A new guide page goes into the sidebar in `docs/.vitepress/config.mts` and into `docs/public/llms.txt`.

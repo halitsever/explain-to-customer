@@ -14,7 +14,7 @@ A Claude Code skill that turns a code change, commit range or pull request into 
 <a href="https://skills.sh/halitsever/explain-to-customer"><img src="https://skills.sh/b/halitsever/explain-to-customer" alt="skills.sh"/></a>
 </p>
 <p align="center">
-<a align="center" href="https://halitsever.github.io/explain-to-customer/">Website and docs</a>
+<a align="center" href="https://projects.halit.org/explain-to-customer/">Website and docs</a>
   </p>
 </p>
 
@@ -88,7 +88,7 @@ Copy-Item -Recurse "$env:USERPROFILE\explain-to-customer\skills\explain-to-custo
 Update with `git pull` in the clone (on Windows, copy the folder again).
 </details>
 
-If `~/.claude/skills` did not exist before, run `/reload-skills` once in Claude Code. New to skills? [How to install a Claude Code skill](https://halitsever.github.io/explain-to-customer/guide/install-claude-code-skill) covers both methods step by step.
+If `~/.claude/skills` did not exist before, run `/reload-skills` once in Claude Code. New to skills? [How to install a Claude Code skill](https://projects.halit.org/explain-to-customer/guide/install-claude-code-skill) covers both methods step by step.
 
 FFmpeg: `brew install ffmpeg`, `winget install Gyan.FFmpeg` or `sudo apt install ffmpeg`. Without admin rights the skill can install a static build for you.
 
@@ -145,7 +145,7 @@ Tweaks after delivery are cheap: ask for a shorter cut, another language or anot
 
 ### Development
 
-The skill lives in `skills/explain-to-customer/`: `SKILL.md` is the entry point, long guidance is in `reference/`, styles in `styles/`, scene templates in `templates/scenes/` and the Node scripts in `scripts/`. `docs/` is the [website](https://halitsever.github.io/explain-to-customer/), built with VitePress (`npm run docs:dev`); its `public/` folder also holds the README images and the logo.
+The skill lives in `skills/explain-to-customer/`: `SKILL.md` is the entry point, long guidance is in `reference/`, styles in `styles/`, scene templates in `templates/scenes/` and the Node scripts in `scripts/`. `docs/` is the [website](https://projects.halit.org/explain-to-customer/), built with VitePress (`npm run docs:dev`); its `public/` folder also holds the README images and the logo.
 
 ```bash
 cd skills/explain-to-customer
