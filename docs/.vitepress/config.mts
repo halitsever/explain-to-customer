@@ -5,6 +5,8 @@ const site = "https://halitsever.github.io/explain-to-customer/";
 const description = "A Claude Code skill that turns a code change into a short explainer video, slides and diagrams your client understands.";
 
 export default defineConfig({
+  /** keeps the page hash map out of every page's HTML, which Semrush reads as a low text-to-HTML ratio */
+  metaChunk: true,
   base,
   lang: "en-US",
   title: "explain-to-customer",
