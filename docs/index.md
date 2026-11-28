@@ -1,4 +1,4 @@
 ---
 landing: true
-title: Claude Code skill for client explainer videos
+title: Claude Code explainer video skill
 ---

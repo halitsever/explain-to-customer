@@ -2,7 +2,7 @@ import { defineConfig } from "vitepress";
 
 const base = "/explain-to-customer/";
 const site = "https://projects.halit.org/explain-to-customer/";
-const description = "A Claude Code skill that turns a code change into a short explainer video, slides and diagrams your client understands.";
+const description = "A Claude Code skill that turns a code change into a short explainer video, slides, Mermaid diagrams and a message your client understands, rendered locally.";
 
 const posts = [
   ["mermaid-sequence-diagram", "Mermaid sequence diagram"],
