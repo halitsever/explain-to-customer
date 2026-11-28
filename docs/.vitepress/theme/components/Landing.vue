@@ -32,6 +32,7 @@ const steps = [
       <nav class="top__nav" aria-label="Main">
         <a :href="withBase('/guide/getting-started')">Guide</a>
         <a href="#styles">Styles</a>
+        <a :href="withBase('/blog/')">Blog</a>
         <a :href="REPO" class="top__gh">GitHub</a>
       </nav>
     </header>
@@ -143,6 +144,7 @@ const steps = [
           <a :href="withBase('/guide/getting-started')">Installation guide</a>
           <a :href="withBase('/guide/usage')">Every argument</a>
           <a :href="withBase('/guide/styles')">All 21 styles</a>
+          <a :href="withBase('/ai-explainer-video/')">AI explainer video</a>
         </p>
       </section>
     </main>
@@ -154,6 +156,7 @@ const steps = [
       </a>
       <nav aria-label="Footer">
         <a :href="withBase('/guide/getting-started')">Guide</a>
+        <a :href="withBase('/blog/')">Blog</a>
         <a :href="REPO">GitHub</a>
         <a href="https://www.skills.sh/halitsever/explain-to-customer/explain-to-customer">skills.sh</a>
         <a :href="`${REPO}/blob/main/LICENSE`">MIT License</a>

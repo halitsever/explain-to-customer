@@ -4,6 +4,57 @@ const base = "/explain-to-customer/";
 const site = "https://projects.halit.org/explain-to-customer/";
 const description = "A Claude Code skill that turns a code change into a short explainer video, slides and diagrams your client understands.";
 
+const posts = [
+  ["mermaid-sequence-diagram", "Mermaid sequence diagram"],
+  ["release-notes-template", "Release notes template"],
+  ["mermaid-to-png", "Mermaid to PNG"],
+  ["mermaid-diagram-confluence-google-docs", "Mermaid in Confluence and Docs"],
+  ["mermaid-er-diagram", "Mermaid ER diagram"],
+  ["claude-code-plugins-vs-skills", "Plugins vs skills"],
+  ["product-update-video-from-pull-request", "Update video from a PR"],
+  ["explain-code-changes-to-clients", "Explain changes to clients"],
+];
+
+/** BlogPosting, breadcrumbs and, when the post shows an FAQ, FAQPage data for a blog post. */
+function postJsonLd(fm: Record<string, any>, url: string) {
+  const person = { "@type": "Person", name: "Halit Sever", url: "https://halit.org" };
+  const graph: object[] = [
+    {
+      "@type": "BlogPosting",
+      headline: fm.headline ?? fm.title,
+      description: fm.description,
+      url,
+      mainEntityOfPage: url,
+      datePublished: fm.date,
+      dateModified: fm.date,
+      inLanguage: "en",
+      image: `${site}brand/social-preview-1280x640.png`,
+      keywords: fm.keyword,
+      author: person,
+      publisher: person,
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "explain-to-customer", item: site },
+        { "@type": "ListItem", position: 2, name: "Blog", item: `${site}blog/` },
+        { "@type": "ListItem", position: 3, name: fm.headline ?? fm.title, item: url },
+      ],
+    },
+  ];
+  if (fm.faq?.length) {
+    graph.push({
+      "@type": "FAQPage",
+      mainEntity: fm.faq.map((f: { q: string; a: string }) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    });
+  }
+  return { "@context": "https://schema.org", "@graph": graph };
+}
+
 export default defineConfig({
   /** keeps the page hash map out of every page's HTML, which Semrush reads as a low text-to-HTML ratio */
   metaChunk: true,
@@ -22,7 +73,6 @@ export default defineConfig({
     ["link", { rel: "icon", type: "image/svg+xml", href: `${base}brand/logo-mark-dark.svg` }],
     ["link", { rel: "apple-touch-icon", href: `${base}brand/avatar-512.png` }],
     ["meta", { name: "theme-color", content: "#1F1D1A" }],
-    ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "explain-to-customer" }],
     ["meta", { property: "og:image", content: `${site}brand/social-preview-1280x640.png` }],
     ["meta", { property: "og:image:width", content: "1280" }],
@@ -34,15 +84,18 @@ export default defineConfig({
   transformPageData(pageData) {
     const path = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
     const url = site + path;
-    const title = path === "" ? "explain-to-customer" : `${pageData.frontmatter.title ?? pageData.title} | explain-to-customer`;
+    const fm = pageData.frontmatter;
+    const title = path === "" ? "explain-to-customer" : fm.titleTemplate === false ? fm.title : `${fm.title ?? pageData.title} | explain-to-customer`;
     const desc = pageData.frontmatter.description || pageData.description || description;
     pageData.frontmatter.head ??= [];
     pageData.frontmatter.head.push(
       ["link", { rel: "canonical", href: url }],
       ["meta", { property: "og:url", content: url }],
+      ["meta", { property: "og:type", content: fm.date ? "article" : "website" }],
       ["meta", { property: "og:title", content: title }],
       ["meta", { property: "og:description", content: desc }],
     );
+    if (fm.date) pageData.frontmatter.head.push(["script", { type: "application/ld+json" }, JSON.stringify(postJsonLd(fm, url))]);
     if (path === "") {
       const code = {
         "@context": "https://schema.org",
@@ -65,8 +118,16 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/guide/getting-started", activeMatch: "/guide/" },
       { text: "Styles", link: "/guide/styles" },
+      { text: "AI explainer video", link: "/ai-explainer-video/" },
+      { text: "Blog", link: "/blog/", activeMatch: "/blog/" },
     ],
     sidebar: {
+      "/blog/": [
+        {
+          text: "Blog",
+          items: [{ text: "All posts", link: "/blog/" }, ...posts.map(([slug, text]) => ({ text, link: `/blog/${slug}` }))],
+        },
+      ],
       "/guide/": [
         {
           text: "Start here",
@@ -89,6 +150,13 @@ export default defineConfig({
             { text: "How it works", link: "/guide/how-it-works" },
             { text: "Privacy and honesty", link: "/guide/privacy" },
             { text: "Troubleshooting", link: "/guide/troubleshooting" },
+          ],
+        },
+        {
+          text: "More",
+          items: [
+            { text: "AI explainer video", link: "/ai-explainer-video/" },
+            { text: "Blog", link: "/blog/" },
           ],
         },
       ],

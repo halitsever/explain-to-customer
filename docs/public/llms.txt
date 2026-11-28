@@ -14,6 +14,16 @@ Install with `npx skills add halitsever/explain-to-customer -g -a claude-code`, 
 - [How it works](https://projects.halit.org/explain-to-customer/guide/how-it-works): preflight, storyboard, approval, render and QA
 - [Privacy and honesty](https://projects.halit.org/explain-to-customer/guide/privacy): what never goes on screen and how secrets are scanned for
 - [Troubleshooting](https://projects.halit.org/explain-to-customer/guide/troubleshooting): skill not found, FFmpeg, macOS permissions, fonts
+- [AI explainer video](https://projects.halit.org/explain-to-customer/ai-explainer-video/): the demo video, three styles, how a run works and what you get
+- [Blog](https://projects.halit.org/explain-to-customer/blog/): guides to explaining code changes to clients
+- [Writing a Mermaid sequence diagram, from arrows to loops](https://projects.halit.org/explain-to-customer/blog/mermaid-sequence-diagram): Mermaid sequence diagram syntax with examples: participants, arrow types, activations, notes, loops, alt and par blocks, autonumber and a before and after pair.
+- [A release notes template your clients will actually read](https://projects.halit.org/explain-to-customer/blog/release-notes-template): A release notes template for client updates: subject line, what changed, what they need to do, known limits, plus a Keep a Changelog version for developers.
+- [Turning a Mermaid diagram into a PNG or SVG file](https://projects.halit.org/explain-to-customer/blog/mermaid-to-png): Convert a Mermaid diagram to PNG or SVG three ways: the Mermaid live editor, mermaid-cli (mmdc) with scale and background flags, and an automated skill run.
+- [Getting a Mermaid diagram into Confluence or Google Docs](https://projects.halit.org/explain-to-customer/blog/mermaid-diagram-confluence-google-docs): How to put a Mermaid diagram into Confluence or Google Docs: paste a rendered PNG or SVG, or use a marketplace app, and where Obsidian and GitHub fit in.
+- [Mermaid entity relationship diagrams, explained by example](https://projects.halit.org/explain-to-customer/blog/mermaid-er-diagram): Mermaid ER diagram syntax: entities, crow's foot cardinality, identifying relationships, attributes with PK and FK keys, plus state and flow diagram pointers.
+- [Skills and plugins in Claude Code, and when you need which](https://projects.halit.org/explain-to-customer/blog/claude-code-plugins-vs-skills): Claude Code plugins vs skills: a skill is one SKILL.md folder, a plugin packages skills, agents, hooks and MCP servers. When to ship which, from the docs.
+- [From pull request to a short product update video](https://projects.halit.org/explain-to-customer/blog/product-update-video-from-pull-request): Make a short product explainer video from a pull request: pick the story, capture real screenshots, write captions, render a 30 to 60 second MP4 locally.
+- [Explaining a code change to a client who does not code](https://projects.halit.org/explain-to-customer/blog/explain-code-changes-to-clients): How to explain technical changes to a non-technical client: start from what they see, use their words, show before and after, say what they must do.
 
 ## Optional
 

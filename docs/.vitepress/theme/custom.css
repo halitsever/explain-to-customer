@@ -84,3 +84,14 @@
   outline: 2px solid var(--etc-ember);
   outline-offset: 2px;
 }
+
+/* Blog posts and the explainer video page */
+.vp-doc .post-meta {
+  margin: 8px 0 20px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+.vp-doc .lead {
+  font-size: 18px;
+  line-height: 1.6;
+}
