@@ -1,6 +1,6 @@
 ---
 title: How to install a Claude Code skill
-description: "How to add skills to Claude Code with the skills CLI or a git clone, where Claude Code looks for them and how to use a skill once it is installed, with explain-to-customer as the example."
+description: "Install a Claude Code skill with the skills CLI or git clone, learn where Claude Code looks for skills and how to use them. explain-to-customer is the example."
 ---
 
 # How to install a Claude Code skill
